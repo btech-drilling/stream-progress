@@ -8,150 +8,156 @@ import {
 
 import {
   ITEMS,
+  DELIVERY_PLAN,
+  PROJECT_TOTAL,
   projectSummary,
-} from '../lib/targets';
+} from '../lib/targets.js';
 
 
-const keys = [
-  'stream',
-  'weathered',
-  'heavy_stream',
-  'heavy_weathered',
-  'bsoil',
-];
+const ITEM_KEYS =
+  Object.keys(ITEMS);
 
 
-const initial = {
-  stream: 0,
-  weathered: 0,
-  heavy_stream: 0,
-  heavy_weathered: 0,
-  bsoil: 0,
-};
-
-
-const DELIVERY_MILESTONES = [
-  {
-    batch: '01',
-    displayDate: '1–5 ก.ย. 2569',
-    cumulative: 400,
-    total: 1702,
-  },
-  {
-    batch: '02',
-    displayDate: '15–20 ก.ย. 2569',
-    cumulative: 800,
-    total: 1702,
-  },
-  {
-    batch: '03',
-    displayDate: '25–30 ก.ย. 2569',
-    cumulative: 1280,
-    total: 1702,
-  },
-  {
-    batch: '04',
-    displayDate: '1–5 ต.ค. 2569',
-    cumulative: 1672,
-    total: 1702,
-  },
-  {
-    batch: 'B',
-    displayDate: '11–15 ต.ค. 2569',
-    cumulative: 1702,
-    total: 1702,
-  },
-];
+const INITIAL_VALUES =
+  Object.fromEntries(
+    ITEM_KEYS.map(
+      (key) => [key, 0]
+    )
+  );
 
 
 function todayBangkok() {
-  return new Intl.DateTimeFormat(
-    'en-CA',
-    {
-      timeZone: 'Asia/Bangkok',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }
-  ).format(new Date());
+  const parts =
+    new Intl.DateTimeFormat(
+      'en-US',
+      {
+        timeZone:
+          'Asia/Bangkok',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }
+    ).formatToParts(
+      new Date()
+    );
+
+  const year =
+    parts.find(
+      (p) => p.type === 'year'
+    )?.value;
+
+  const month =
+    parts.find(
+      (p) => p.type === 'month'
+    )?.value;
+
+  const day =
+    parts.find(
+      (p) => p.type === 'day'
+    )?.value;
+
+  return `${year}-${month}-${day}`;
 }
 
 
 function fmt(value) {
   return new Intl.NumberFormat(
     'th-TH'
-  ).format(value);
+  ).format(
+    Number(value || 0)
+  );
 }
 
 
-function statusFor(row) {
-  if (row.target === 0) {
+function pct(value) {
+  return Number(
+    value || 0
+  ).toFixed(2);
+}
+
+
+function getStatus(item) {
+  if (item.target === 0) {
     return {
       label: 'Not Due',
       tone: 'neutral',
-      detail: 'ยังไม่ถึง Target',
+      detail:
+        'ยังไม่ถึงช่วง Target',
     };
   }
 
-  if (row.gap >= 0) {
+  if (item.behind) {
+    return {
+      label: 'Behind',
+      tone: 'bad',
+      detail:
+        `ขาด ${fmt(
+          Math.abs(
+            item.difference
+          )
+        )} ตัวอย่าง`,
+    };
+  }
+
+  if (item.difference > 0) {
     return {
       label: 'On Track',
       tone: 'good',
-      detail: `ถึง/เกินเป้า ${fmt(row.gap)} ตัวอย่าง`,
+      detail:
+        `เกิน Target ${fmt(
+          item.difference
+        )} ตัวอย่าง`,
     };
   }
 
   return {
-    label: 'Behind',
-    tone: 'bad',
-    detail: `ขาด ${fmt(-row.gap)} ตัวอย่าง`,
+    label: 'On Track',
+    tone: 'good',
+    detail:
+      'ถึง Target',
   };
 }
 
 
-function nextMilestone(date) {
+function nextMilestone(
+  dateString
+) {
   const milestones = [
     [
       '2026-09-05',
       'รอบที่ 1',
       '5 ก.ย. 2569',
-      '100 / 418 ต่อ Item',
     ],
     [
       '2026-09-20',
       'รอบที่ 2',
       '20 ก.ย. 2569',
-      '200 / 418 ต่อ Item',
     ],
     [
       '2026-09-30',
       'รอบที่ 3',
       '30 ก.ย. 2569',
-      '320 / 418 ต่อ Item',
     ],
     [
       '2026-10-05',
       'รอบที่ 4',
       '5 ต.ค. 2569',
-      '418 / 418 ต่อ Item',
     ],
     [
       '2026-10-15',
       'ดินชั้น B',
       '15 ต.ค. 2569',
-      '30 / 30',
     ],
   ];
 
   return (
     milestones.find(
-      ([milestoneDate]) =>
-        date <= milestoneDate
+      ([date]) =>
+        dateString <= date
     ) || [
       '-',
       'ครบทุกชุด',
       '-',
-      'ส่งครบตามแผน',
     ]
   );
 }
@@ -162,31 +168,39 @@ export default function Page() {
     useState(todayBangkok());
 
   const [values, setValues] =
-    useState(initial);
+    useState(INITIAL_VALUES);
 
   const [message, setMessage] =
-    useState('กำลังโหลดข้อมูลล่าสุด...');
+    useState(
+      'กำลังโหลดข้อมูลล่าสุด...'
+    );
 
   const [saving, setSaving] =
     useState(false);
 
 
-  const summary = useMemo(
-    () => projectSummary(date, values),
-    [date, values]
-  );
+  const summary =
+    useMemo(
+      () =>
+        projectSummary(
+          date,
+          values
+        ),
+      [date, values]
+    );
 
 
-  const milestone = useMemo(
-    () => nextMilestone(date),
-    [date]
-  );
+  const milestone =
+    useMemo(
+      () =>
+        nextMilestone(date),
+      [date]
+    );
 
 
-  const overallGap =
-    summary.actualPct -
-    summary.targetPct;
-
+  // ====================================================
+  // LOAD LATEST PROGRESS
+  // ====================================================
 
   useEffect(() => {
     fetch('/api/progress')
@@ -194,37 +208,38 @@ export default function Page() {
         response.json()
       )
       .then((data) => {
-        if (data.snapshot) {
-          setValues({
-            stream:
-              data.snapshot.stream ?? 0,
-
-            weathered:
-              data.snapshot.weathered ?? 0,
-
-            heavy_stream:
-              data.snapshot.heavy_stream ?? 0,
-
-            heavy_weathered:
-              data.snapshot.heavy_weathered ?? 0,
-
-            bsoil:
-              data.snapshot.bsoil ?? 0,
-          });
-
-          setDate(
-            data.snapshot.progress_date ||
-            todayBangkok()
-          );
-
-          setMessage(
-            'โหลดข้อมูลล่าสุดแล้ว'
-          );
-        } else {
+        if (!data.snapshot) {
           setMessage(
             'ยังไม่มีข้อมูลที่บันทึก'
           );
+
+          return;
         }
+
+        const nextValues = {};
+
+        for (
+          const key
+          of ITEM_KEYS
+        ) {
+          nextValues[key] =
+            Number(
+              data.snapshot[
+                key
+              ] ?? 0
+            );
+        }
+
+        setValues(
+          nextValues
+        );
+
+        setMessage(
+          data.snapshot
+            .progress_date
+            ? `โหลดข้อมูลล่าสุด ณ ${data.snapshot.progress_date}`
+            : 'โหลดข้อมูลล่าสุดแล้ว'
+        );
       })
       .catch(() => {
         setMessage(
@@ -234,6 +249,10 @@ export default function Page() {
   }, []);
 
 
+  // ====================================================
+  // SAVE
+  // ====================================================
+
   async function save() {
     setSaving(true);
 
@@ -242,49 +261,84 @@ export default function Page() {
     );
 
     try {
-      const res = await fetch(
-        '/api/progress',
-        {
-          method: 'POST',
+      const response =
+        await fetch(
+          '/api/progress',
+          {
+            method: 'POST',
 
-          headers: {
-            'Content-Type':
-              'application/json',
-          },
+            headers: {
+              'Content-Type':
+                'application/json',
+            },
 
-          body: JSON.stringify({
-            progress_date: date,
-            ...values,
-          }),
-        }
-      );
+            body:
+              JSON.stringify({
+                progress_date:
+                  date,
 
+                ...values,
+              }),
+          }
+        );
 
       const data =
-        await res.json();
+        await response.json();
 
-
-      if (res.ok) {
-        setMessage(
-          'บันทึก Progress เรียบร้อย'
-        );
-      } else {
+      if (!response.ok) {
         setMessage(
           `บันทึกไม่สำเร็จ: ${
-            typeof data.error === 'string'
-              ? data.error
-              : JSON.stringify(data.error)
+            data.error ||
+            'unknown error'
           }`
         );
+
+        return;
       }
-    } catch {
+
+      setMessage(
+        'บันทึก Progress เรียบร้อย'
+      );
+    }
+
+    catch {
       setMessage(
         'บันทึกไม่สำเร็จ: เชื่อมต่อระบบไม่ได้'
       );
-    } finally {
+    }
+
+    finally {
       setSaving(false);
     }
   }
+
+
+  const overallGap =
+    summary.actualPercent -
+    summary.targetPercent;
+
+
+  const overallStatus =
+    summary.targetTotal === 0
+      ? {
+          value: 'Not Due',
+          tone: 'neutral',
+          detail:
+            'ยังไม่ถึงช่วง Target',
+        }
+      : summary.behind
+      ? {
+          value: 'Behind',
+          tone: 'bad',
+          detail:
+            'มีรายการต่ำกว่า Target',
+        }
+      : {
+          value: 'On Track',
+          tone: 'good',
+          detail:
+            'ทุกรายการถึงหรือเกิน Target',
+        };
 
 
   return (
@@ -293,7 +347,6 @@ export default function Page() {
       {/* HEADER */}
 
       <header className="appHeader">
-
         <div className="brandBlock">
 
           <div className="brandMark">
@@ -312,12 +365,10 @@ export default function Page() {
 
         </div>
 
-
         <div className="headerMeta">
           <span className="liveDot" />
-          Online Dashboard
+          Online dashboard
         </div>
-
       </header>
 
 
@@ -331,69 +382,63 @@ export default function Page() {
             OVERALL SAMPLE PROGRESS
           </div>
 
-
           <div className="heroHeadline">
 
             <span className="heroPercent">
-              {summary.actualPct.toFixed(2)}%
+              {pct(
+                summary.actualPercent
+              )}%
             </span>
 
             <span className="heroStatusText">
               {
-                summary.targetTotal === 0
+                summary.targetTotal ===
+                0
                   ? 'ยังไม่ถึงช่วง Target'
                   : summary.behind
-                    ? 'ต่ำกว่าแผน'
-                    : 'ตามแผน'
+                  ? 'ต่ำกว่าแผน'
+                  : 'ตามแผน'
               }
             </span>
 
           </div>
 
-
           <div className="heroCount">
 
             <strong>
-              {fmt(summary.actualTotal)}
+              {fmt(
+                summary.actualTotal
+              )}
             </strong>
 
             {' / '}
 
-            {fmt(summary.totalProject)}
+            {fmt(
+              summary.projectTotal
+            )}
 
             {' ตัวอย่างสะสม'}
 
           </div>
 
-
-          <div
-            className="heroProgress"
-            aria-label={
-              `Overall Progress ${summary.actualPct.toFixed(2)}%`
-            }
-          >
+          <div className="heroProgress">
 
             <span
               style={{
                 width:
                   `${Math.min(
                     100,
-                    summary.actualPct
+                    summary.actualPercent
                   )}%`,
               }}
             />
 
           </div>
 
-
           <div className="heroFoot">
-            4 รายการหลัก 1,672 ตัวอย่าง
-            {' + '}
-            ดินชั้น B 30 ตัวอย่าง
-            {' = '}
-            <strong>
-              1,702 ตัวอย่าง
-            </strong>
+            Overall รวมตัวอย่างทุก Item
+            ทั้งโครงการ {fmt(PROJECT_TOTAL)}
+            {' '}ตัวอย่าง
           </div>
 
         </div>
@@ -402,9 +447,8 @@ export default function Page() {
         <div className="controlPanel">
 
           <label htmlFor="progress-date">
-            วันที่ประเมิน
+            Progress ณ วันที่
           </label>
-
 
           <input
             id="progress-date"
@@ -418,7 +462,6 @@ export default function Page() {
             }
           />
 
-
           <button
             className="primaryButton"
             onClick={save}
@@ -431,7 +474,6 @@ export default function Page() {
             }
           </button>
 
-
           <div className="saveMessage">
             {message}
           </div>
@@ -441,100 +483,88 @@ export default function Page() {
       </section>
 
 
-      {/* KPI */}
+      {/* METRICS */}
 
       <section className="metricGrid">
 
         <Metric
-          title="Target วันนี้"
-
+          title="Target ณ วันที่"
           value={
-            `${summary.targetPct.toFixed(2)}%`
+            `${pct(
+              summary.targetPercent
+            )}%`
           }
-
           sub={
-            `${fmt(summary.targetTotal)} / ${fmt(summary.totalProject)} ตัวอย่าง`
+            `${fmt(
+              summary.targetTotal
+            )} / ${fmt(
+              summary.projectTotal
+            )} ตัวอย่าง`
           }
         />
 
 
         <Metric
           title="Gap จากแผน"
-
           value={
-            `${overallGap >= 0 ? '+' : ''}${overallGap.toFixed(2)}%`
+            `${
+              overallGap > 0
+                ? '+'
+                : ''
+            }${pct(
+              overallGap
+            )}%`
           }
-
           sub={
             summary.targetTotal === 0
               ? 'ยังไม่ถึงช่วง Target'
-              : summary.behind
-                ? `ขาด ${fmt(
-                    summary.targetTotal -
-                    summary.actualTotal
-                  )} ตัวอย่าง`
-                : `เกินเป้า ${fmt(
-                    Math.max(
-                      0,
-                      summary.actualTotal -
-                      summary.targetTotal
-                    )
-                  )} ตัวอย่าง`
+              : summary.difference < 0
+              ? `ขาด ${fmt(
+                  Math.abs(
+                    summary.difference
+                  )
+                )} ตัวอย่าง`
+              : `เกิน/ถึง Target ${fmt(
+                  Math.max(
+                    0,
+                    summary.difference
+                  )
+                )} ตัวอย่าง`
           }
-
           tone={
             summary.targetTotal === 0
               ? 'neutral'
               : summary.behind
-                ? 'bad'
-                : 'good'
+              ? 'bad'
+              : 'good'
           }
         />
 
 
         <Metric
           title="สถานะโครงการ"
-
           value={
-            summary.targetTotal === 0
-              ? 'Not Due'
-              : summary.behind
-                ? 'Behind'
-                : 'On Track'
+            overallStatus.value
           }
-
           sub={
-            summary.targetTotal === 0
-              ? 'รอเริ่ม Target ตามแผน'
-              : summary.behind
-                ? 'ควรเร่ง Progress'
-                : 'Progress ถึงหรือเกิน Target'
+            overallStatus.detail
           }
-
           tone={
-            summary.targetTotal === 0
-              ? 'neutral'
-              : summary.behind
-                ? 'bad'
-                : 'good'
+            overallStatus.tone
           }
         />
 
 
         <Metric
           title="กำหนดถัดไป"
-
           value={milestone[1]}
-
-          sub={
-            `${milestone[2]} · ${milestone[3]}`
-          }
+          sub={milestone[2]}
         />
 
       </section>
 
 
-      {/* CONTENT */}
+      {/* ITEM CARDS */}
 
       <section className="contentGrid">
 
@@ -543,7 +573,6 @@ export default function Page() {
           <div className="panelHeading">
 
             <div>
-
               <div className="sectionEyebrow">
                 ACTUAL INPUT
               </div>
@@ -551,12 +580,10 @@ export default function Page() {
               <h2>
                 Progress by Item
               </h2>
-
             </div>
 
-
             <div className="panelNote">
-              กรอกจำนวนตัวอย่างสะสมจริง
+              กรอกจำนวนสะสมของแต่ละ Item
             </div>
 
           </div>
@@ -564,205 +591,174 @@ export default function Page() {
 
           <div className="itemGrid">
 
-            {
-              keys.map(
-                (key, index) => {
+            {ITEM_KEYS.map(
+              (key, index) => {
 
-                  const row =
-                    summary.rows.find(
-                      (item) =>
-                        item.key === key
-                    );
+                const item =
+                  summary.items[key];
 
+                const status =
+                  getStatus(item);
 
-                  if (!row) {
-                    return null;
-                  }
+                return (
+                  <article
+                    className="itemCard"
+                    key={key}
+                  >
 
+                    <div className="itemTop">
 
-                  const status =
-                    statusFor(row);
-
-
-                  return (
-                    <article
-                      className="itemCard"
-                      key={key}
-                    >
-
-                      <div className="itemTop">
-
-                        <div className="itemNumber">
-                          {
-                            String(
-                              index + 1
-                            ).padStart(
-                              2,
-                              '0'
-                            )
-                          }
-                        </div>
-
-
-                        <span
-                          className={
-                            `statusBadge ${status.tone}`
-                          }
-                        >
-                          {status.label}
-                        </span>
-
+                      <div className="itemNumber">
+                        {String(
+                          index + 1
+                        ).padStart(
+                          2,
+                          '0'
+                        )}
                       </div>
 
-
-                      <h3>
-                        {ITEMS[key].label}
-                      </h3>
-
-
-                      <div className="itemTotal">
-                        เป้าหมายทั้งหมด
-                        {' '}
-                        {fmt(row.total)}
-                        {' '}
-                        ตัวอย่าง
-                      </div>
-
-
-                      <div className="inputRow">
-
-                        <label
-                          htmlFor={
-                            `input-${key}`
-                          }
-                        >
-                          Actual สะสม
-                        </label>
-
-
-                        <div className="numberInputWrap">
-
-                          <input
-                            id={
-                              `input-${key}`
-                            }
-
-                            type="number"
-
-                            min="0"
-
-                            max={
-                              ITEMS[key].total
-                            }
-
-                            value={
-                              values[key]
-                            }
-
-                            onChange={
-                              (event) => {
-
-                                const rawValue =
-                                  Number(
-                                    event.target.value
-                                    || 0
-                                  );
-
-
-                                const safeValue =
-                                  Math.max(
-                                    0,
-                                    Math.min(
-                                      ITEMS[key].total,
-                                      Number.isFinite(
-                                        rawValue
-                                      )
-                                        ? rawValue
-                                        : 0
-                                    )
-                                  );
-
-
-                                setValues(
-                                  (current) => ({
-                                    ...current,
-                                    [key]:
-                                      safeValue,
-                                  })
-                                );
-                              }
-                            }
-                          />
-
-
-                          <span>
-                            /
-                            {' '}
-                            {fmt(row.total)}
-                          </span>
-
-                        </div>
-
-                      </div>
-
-
-                      <div className="itemProgressLine">
-
-                        <strong>
-                          {
-                            row.progress.toFixed(
-                              2
-                            )
-                          }%
-                        </strong>
-
-
-                        <span>
-                          Target
-                          {' '}
-                          {fmt(row.target)}
-                          {' / '}
-                          {fmt(row.total)}
-                        </span>
-
-                      </div>
-
-
-                      <div className="itemBar">
-
-                        <span
-                          style={{
-                            width:
-                              `${Math.min(
-                                100,
-                                row.progress
-                              )}%`,
-                          }}
-                        />
-
-                      </div>
-
-
-                      <div
+                      <span
                         className={
-                          `gapText ${status.tone}`
+                          `statusBadge ${status.tone}`
                         }
                       >
-                        {status.detail}
-                      </div>
+                        {status.label}
+                      </span>
 
-                    </article>
-                  );
-                }
-              )
-            }
+                    </div>
+
+
+                    <h3>
+                      {item.label}
+                    </h3>
+
+
+                    <div className="itemTotal">
+                      เป้าหมายทั้งหมด{' '}
+                      {fmt(item.total)}
+                      {' '}ตัวอย่าง
+                    </div>
+
+
+                    <div className="inputRow">
+
+                      <label
+                        htmlFor={
+                          `input-${key}`
+                        }
+                      >
+                        Actual สะสม
+                      </label>
+
+
+                      <div className="numberInputWrap">
+
+                        <input
+                          id={
+                            `input-${key}`
+                          }
+                          type="number"
+                          min="0"
+                          max={
+                            item.total
+                          }
+                          value={
+                            values[key]
+                          }
+                          onChange={
+                            (event) => {
+                              const value =
+                                Math.max(
+                                  0,
+                                  Math.min(
+                                    item.total,
+                                    Number(
+                                      event
+                                        .target
+                                        .value ||
+                                        0
+                                    )
+                                  )
+                                );
+
+                              setValues(
+                                (
+                                  current
+                                ) => ({
+                                  ...current,
+                                  [key]:
+                                    value,
+                                })
+                              );
+                            }
+                          }
+                        />
+
+                        <span>
+                          / {fmt(
+                            item.total
+                          )}
+                        </span>
+
+                      </div>
+                    </div>
+
+
+                    <div className="itemProgressLine">
+
+                      <strong>
+                        {pct(
+                          item.progressPercent
+                        )}%
+                      </strong>
+
+                      <span>
+                        Target{' '}
+                        {fmt(
+                          item.target
+                        )}
+                        {' / '}
+                        {fmt(
+                          item.total
+                        )}
+                      </span>
+
+                    </div>
+
+
+                    <div className="itemBar">
+
+                      <span
+                        style={{
+                          width:
+                            `${Math.min(
+                              100,
+                              item.progressPercent
+                            )}%`,
+                        }}
+                      />
+
+                    </div>
+
+
+                    <div
+                      className={
+                        `gapText ${status.tone}`
+                      }
+                    >
+                      {status.detail}
+                    </div>
+
+                  </article>
+                );
+              }
+            )}
 
           </div>
-
         </div>
 
 
-        {/* PROJECT SUMMARY */}
+        {/* SUMMARY */}
 
         <aside className="panel summaryPanel">
 
@@ -774,75 +770,73 @@ export default function Page() {
             ยอดสะสมรวม
           </h2>
 
-
           <div className="summaryBig">
-            {fmt(summary.actualTotal)}
+            {fmt(
+              summary.actualTotal
+            )}
           </div>
-
 
           <div className="summaryUnit">
-            จากทั้งหมด
-            {' '}
-            {fmt(summary.totalProject)}
-            {' '}
-            ตัวอย่าง
+            จากทั้งหมด{' '}
+            {fmt(
+              summary.projectTotal
+            )}
+            {' '}ตัวอย่าง
           </div>
-
 
           <div className="summaryDivider" />
 
 
-          {
-            summary.rows.map(
-              (row) => (
+          {ITEM_KEYS.map(
+            (key) => {
 
+              const item =
+                summary.items[key];
+
+              return (
                 <div
                   className="summaryRow"
-                  key={row.key}
+                  key={key}
                 >
 
                   <div>
-
                     <strong>
-                      {row.label}
+                      {item.label}
                     </strong>
 
                     <span>
-                      {
-                        row.progress.toFixed(
-                          2
-                        )
-                      }%
+                      {pct(
+                        item.progressPercent
+                      )}%
                     </span>
-
                   </div>
 
-
                   <b>
-                    {fmt(row.actual)}
+                    {fmt(
+                      item.actual
+                    )}
                     {' / '}
-                    {fmt(row.total)}
+                    {fmt(
+                      item.total
+                    )}
                   </b>
 
                 </div>
-
-              )
-            )
-          }
+              );
+            }
+          )}
 
 
           <div className="summaryCallout">
 
             <strong>
-              Overall Progress
+              หลักการคิด Overall
             </strong>
 
             <span>
               Actual ทุก Item รวมกัน
-              {' ÷ '}
-              1,702
-              {' × '}
-              100
+              ÷ {fmt(PROJECT_TOTAL)}
+              {' × 100'}
             </span>
 
           </div>
@@ -859,7 +853,6 @@ export default function Page() {
         <div className="panelHeading">
 
           <div>
-
             <div className="sectionEyebrow">
               DELIVERY PLAN
             </div>
@@ -867,62 +860,12 @@ export default function Page() {
             <h2>
               แผนส่งตัวอย่าง
             </h2>
-
           </div>
-
 
           <div className="panelNote">
-            Total Project
-            {' · '}
-            1,702 ตัวอย่าง
-          </div>
-
-        </div>
-
-
-        <div className="deliverySummary">
-
-          <div>
-            <span>
-              รายการหลัก
-            </span>
-
-            <strong>
-              418 × 4
-            </strong>
-          </div>
-
-
-          <div>
-            <span>
-              Main Samples
-            </span>
-
-            <strong>
-              1,672
-            </strong>
-          </div>
-
-
-          <div>
-            <span>
-              ดินชั้น B
-            </span>
-
-            <strong>
-              30
-            </strong>
-          </div>
-
-
-          <div>
-            <span>
-              Total Project
-            </span>
-
-            <strong>
-              1,702
-            </strong>
+            รวมทั้งโครงการ{' '}
+            {fmt(PROJECT_TOTAL)}
+            {' '}ตัวอย่าง
           </div>
 
         </div>
@@ -933,67 +876,60 @@ export default function Page() {
           <table className="deliveryTable">
 
             <thead>
-
               <tr>
-
-                <th>
-                  รอบส่ง
-                </th>
-
-                <th>
-                  กำหนดส่ง
-                </th>
-
-                <th>
-                  ยอดสะสมรวมทุก Item
-                </th>
-
-                <th>
-                  Progress
-                </th>
-
+                <th>รอบส่ง</th>
+                <th>กำหนดส่ง</th>
+                <th>ยอดสะสมรวม</th>
+                <th>Progress</th>
               </tr>
-
             </thead>
-
 
             <tbody>
 
-              {
-                DELIVERY_MILESTONES.map(
-                  (row) => {
+              {DELIVERY_PLAN.map(
+                (row) => {
 
-                    const progress =
-                      (
-                        row.cumulative /
-                        row.total
-                      ) * 100;
+                  const progress =
+                    (
+                      row.cumulative /
+                      PROJECT_TOTAL
+                    ) * 100;
 
+                  return (
+                    <tr key={row.key}>
 
-                    return (
-                      <DeliveryRow
-                        key={row.batch}
+                      <td>
+                        <strong>
+                          {row.label}
+                        </strong>
+                      </td>
 
-                        batch={
-                          row.batch
-                        }
+                      <td>
+                        {row.delivery}
+                      </td>
 
-                        date={
-                          row.displayDate
-                        }
+                      <td>
+                        {fmt(
+                          row.cumulative
+                        )}
+                        {' / '}
+                        {fmt(
+                          PROJECT_TOTAL
+                        )}
+                      </td>
 
-                        total={
-                          `${fmt(row.cumulative)} / ${fmt(row.total)}`
-                        }
+                      <td>
+                        <span className="progressBadge">
+                          {pct(
+                            progress
+                          )}%
+                        </span>
+                      </td>
 
-                        pct={
-                          `${progress.toFixed(2)}%`
-                        }
-                      />
-                    );
-                  }
-                )
-              }
+                    </tr>
+                  );
+                }
+              )}
 
             </tbody>
 
@@ -1001,34 +937,13 @@ export default function Page() {
 
         </div>
 
-
-        <div className="deliveryFootnote">
-
-          รอบที่ 1–4 ครอบคลุมตัวอย่างหลัก
-          {' '}
-          4 รายการ รวม
-          {' '}
-          1,672 ตัวอย่าง
-          {' · '}
-          ดินชั้น B จำนวน 30 ตัวอย่าง
-          {' '}
-          ส่งวันที่ 11–15 ต.ค. 2569
-          {' · '}
-          Total Project = 1,702 ตัวอย่าง
-
-        </div>
-
       </section>
 
 
       <footer className="footerNote">
-
-        Stream Progress
-        {' · '}
-        BTECH Sample Delivery Control
-        {' · '}
-        Supabase
-
+        Stream Progress ·
+        BTECH Sample Delivery Control ·
+        ข้อมูลบันทึกบน Supabase
       </footer>
 
     </main>
@@ -1042,14 +957,12 @@ function Metric({
   sub,
   tone = 'neutral',
 }) {
-
   return (
     <div
       className={
         `metricCard ${tone}`
       }
     >
-
       <div className="metricLabel">
         {title}
       </div>
@@ -1061,46 +974,6 @@ function Metric({
       <div className="metricSub">
         {sub}
       </div>
-
     </div>
-  );
-}
-
-
-function DeliveryRow({
-  batch,
-  date,
-  total,
-  pct,
-}) {
-
-  return (
-    <tr>
-
-      <td>
-        <span className="batchBadge">
-          {batch}
-        </span>
-      </td>
-
-      <td>
-        <strong>
-          {date}
-        </strong>
-      </td>
-
-      <td>
-        <span className="deliveryTotal">
-          {total}
-        </span>
-      </td>
-
-      <td>
-        <span className="progressBadge">
-          {pct}
-        </span>
-      </td>
-
-    </tr>
   );
 }
