@@ -10,6 +10,10 @@ import {
   ITEMS,
   DELIVERY_PLAN,
   PROJECT_TOTAL,
+  COLLECTION_START_DATE,
+  PROGRESS_END_DATE,
+  PLAN_TOTAL_DAYS,
+  planDayForDate,
   projectSummary,
 } from '../lib/targets.js';
 
@@ -57,6 +61,35 @@ function todayBangkok() {
     )?.value;
 
   return `${year}-${month}-${day}`;
+}
+
+
+function thaiDate(dateString) {
+  if (!dateString) return '-';
+
+  const [year, month, day] =
+    dateString
+      .split('-')
+      .map(Number);
+
+  const months = [
+    'ม.ค.',
+    'ก.พ.',
+    'มี.ค.',
+    'เม.ย.',
+    'พ.ค.',
+    'มิ.ย.',
+    'ก.ค.',
+    'ส.ค.',
+    'ก.ย.',
+    'ต.ค.',
+    'พ.ย.',
+    'ธ.ค.',
+  ];
+
+  return `${day} ${
+    months[month - 1]
+  } ${year + 543}`;
 }
 
 
@@ -190,6 +223,14 @@ export default function Page() {
     );
 
 
+  const planDay =
+    useMemo(
+      () =>
+        planDayForDate(date),
+      [date]
+    );
+
+
   const milestone =
     useMemo(
       () =>
@@ -237,7 +278,10 @@ export default function Page() {
         setMessage(
           data.snapshot
             .progress_date
-            ? `โหลดข้อมูลล่าสุด ณ ${data.snapshot.progress_date}`
+            ? `โหลดข้อมูลล่าสุด: ${thaiDate(
+                data.snapshot
+                  .progress_date
+              )}`
             : 'โหลดข้อมูลล่าสุดแล้ว'
         );
       })
@@ -297,7 +341,9 @@ export default function Page() {
       }
 
       setMessage(
-        'บันทึก Progress เรียบร้อย'
+        `บันทึก Progress วันที่ ${thaiDate(
+          date
+        )} เรียบร้อย`
       );
     }
 
@@ -347,6 +393,7 @@ export default function Page() {
       {/* HEADER */}
 
       <header className="appHeader">
+
         <div className="brandBlock">
 
           <div className="brandMark">
@@ -354,6 +401,7 @@ export default function Page() {
           </div>
 
           <div>
+
             <div className="brandTitle">
               BTECH
             </div>
@@ -361,14 +409,17 @@ export default function Page() {
             <div className="brandSub">
               Sample Progress Control
             </div>
+
           </div>
 
         </div>
+
 
         <div className="headerMeta">
           <span className="liveDot" />
           Online dashboard
         </div>
+
       </header>
 
 
@@ -381,6 +432,7 @@ export default function Page() {
           <div className="heroEyebrow">
             OVERALL SAMPLE PROGRESS
           </div>
+
 
           <div className="heroHeadline">
 
@@ -403,6 +455,7 @@ export default function Page() {
 
           </div>
 
+
           <div className="heroCount">
 
             <strong>
@@ -421,6 +474,7 @@ export default function Page() {
 
           </div>
 
+
           <div className="heroProgress">
 
             <span
@@ -434,6 +488,7 @@ export default function Page() {
             />
 
           </div>
+
 
           <div className="heroFoot">
             Overall รวมตัวอย่างทุก Item
@@ -454,6 +509,7 @@ export default function Page() {
             id="progress-date"
             type="date"
             value={date}
+            max={todayBangkok()}
             onChange={
               (event) =>
                 setDate(
@@ -461,6 +517,7 @@ export default function Page() {
                 )
             }
           />
+
 
           <button
             className="primaryButton"
@@ -474,6 +531,7 @@ export default function Page() {
             }
           </button>
 
+
           <div className="saveMessage">
             {message}
           </div>
@@ -483,7 +541,67 @@ export default function Page() {
       </section>
 
 
-      {/* METRICS */}
+      {/* PROJECT PLAN INFO */}
+
+      <section className="metricGrid">
+
+        <Metric
+          title="Project Start"
+          value={
+            thaiDate(
+              COLLECTION_START_DATE
+            )
+          }
+          sub="เริ่มเก็บตัวอย่างตามแผน"
+        />
+
+
+        <Metric
+          title="วันที่ตามแผน"
+          value={planDay.label}
+          sub={
+            planDay.status ===
+            'active'
+              ? `จากแผนทั้งหมด ${PLAN_TOTAL_DAYS} วัน`
+              : planDay.status ===
+                'before'
+              ? `Day 1 เริ่ม ${thaiDate(
+                  COLLECTION_START_DATE
+                )}`
+              : 'สิ้นสุดระยะเวลาตามแผนแล้ว'
+          }
+          tone={
+            planDay.status ===
+            'active'
+              ? 'good'
+              : 'neutral'
+          }
+        />
+
+
+        <Metric
+          title="Final Delivery"
+          value={
+            thaiDate(
+              PROGRESS_END_DATE
+            )
+          }
+          sub={
+            `Day ${PLAN_TOTAL_DAYS} / ${PLAN_TOTAL_DAYS} วัน`
+          }
+        />
+
+
+        <Metric
+          title="กำหนดถัดไป"
+          value={milestone[1]}
+          sub={milestone[2]}
+        />
+
+      </section>
+
+
+      {/* PROGRESS METRICS */}
 
       <section className="metricGrid">
 
@@ -497,6 +615,23 @@ export default function Page() {
           sub={
             `${fmt(
               summary.targetTotal
+            )} / ${fmt(
+              summary.projectTotal
+            )} ตัวอย่าง`
+          }
+        />
+
+
+        <Metric
+          title="Actual ณ วันที่"
+          value={
+            `${pct(
+              summary.actualPercent
+            )}%`
+          }
+          sub={
+            `${fmt(
+              summary.actualTotal
             )} / ${fmt(
               summary.projectTotal
             )} ตัวอย่าง`
@@ -554,13 +689,6 @@ export default function Page() {
           }
         />
 
-
-        <Metric
-          title="กำหนดถัดไป"
-          value={milestone[1]}
-          sub={milestone[2]}
-        />
-
       </section>
 
 
@@ -573,6 +701,7 @@ export default function Page() {
           <div className="panelHeading">
 
             <div>
+
               <div className="sectionEyebrow">
                 ACTUAL INPUT
               </div>
@@ -580,7 +709,9 @@ export default function Page() {
               <h2>
                 Progress by Item
               </h2>
+
             </div>
+
 
             <div className="panelNote">
               กรอกจำนวนสะสมของแต่ละ Item
@@ -616,6 +747,7 @@ export default function Page() {
                           '0'
                         )}
                       </div>
+
 
                       <span
                         className={
@@ -667,6 +799,7 @@ export default function Page() {
                           }
                           onChange={
                             (event) => {
+
                               const value =
                                 Math.max(
                                   0,
@@ -694,6 +827,7 @@ export default function Page() {
                           }
                         />
 
+
                         <span>
                           / {fmt(
                             item.total
@@ -701,6 +835,7 @@ export default function Page() {
                         </span>
 
                       </div>
+
                     </div>
 
 
@@ -755,6 +890,7 @@ export default function Page() {
             )}
 
           </div>
+
         </div>
 
 
@@ -770,11 +906,13 @@ export default function Page() {
             ยอดสะสมรวม
           </h2>
 
+
           <div className="summaryBig">
             {fmt(
               summary.actualTotal
             )}
           </div>
+
 
           <div className="summaryUnit">
             จากทั้งหมด{' '}
@@ -783,6 +921,7 @@ export default function Page() {
             )}
             {' '}ตัวอย่าง
           </div>
+
 
           <div className="summaryDivider" />
 
@@ -800,6 +939,7 @@ export default function Page() {
                 >
 
                   <div>
+
                     <strong>
                       {item.label}
                     </strong>
@@ -809,7 +949,9 @@ export default function Page() {
                         item.progressPercent
                       )}%
                     </span>
+
                   </div>
+
 
                   <b>
                     {fmt(
@@ -830,13 +972,19 @@ export default function Page() {
           <div className="summaryCallout">
 
             <strong>
-              หลักการคิด Overall
+              แผนปัจจุบัน
             </strong>
 
             <span>
-              Actual ทุก Item รวมกัน
-              ÷ {fmt(PROJECT_TOTAL)}
-              {' × 100'}
+              {planDay.label}
+              {' · Target '}
+              {fmt(
+                summary.targetTotal
+              )}
+              {' / '}
+              {fmt(
+                summary.projectTotal
+              )}
             </span>
 
           </div>
@@ -853,6 +1001,7 @@ export default function Page() {
         <div className="panelHeading">
 
           <div>
+
             <div className="sectionEyebrow">
               DELIVERY PLAN
             </div>
@@ -860,12 +1009,15 @@ export default function Page() {
             <h2>
               แผนส่งตัวอย่าง
             </h2>
+
           </div>
 
+
           <div className="panelNote">
-            รวมทั้งโครงการ{' '}
-            {fmt(PROJECT_TOTAL)}
-            {' '}ตัวอย่าง
+            Final Delivery{' '}
+            {thaiDate(
+              PROGRESS_END_DATE
+            )}
           </div>
 
         </div>
@@ -876,13 +1028,16 @@ export default function Page() {
           <table className="deliveryTable">
 
             <thead>
+
               <tr>
                 <th>รอบส่ง</th>
                 <th>กำหนดส่ง</th>
                 <th>ยอดสะสมรวม</th>
                 <th>Progress</th>
               </tr>
+
             </thead>
+
 
             <tbody>
 
@@ -963,6 +1118,7 @@ function Metric({
         `metricCard ${tone}`
       }
     >
+
       <div className="metricLabel">
         {title}
       </div>
@@ -974,6 +1130,7 @@ function Metric({
       <div className="metricSub">
         {sub}
       </div>
+
     </div>
   );
 }
