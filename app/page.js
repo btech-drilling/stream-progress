@@ -109,6 +109,30 @@ function thaiDate(
 }
 
 
+function thaiDateTime(
+  timestamp
+) {
+  if (!timestamp) return '-';
+
+  return new Intl.DateTimeFormat(
+    'th-TH-u-ca-buddhist',
+    {
+      timeZone:
+        'Asia/Bangkok',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }
+  ).format(
+    new Date(timestamp)
+  );
+}
+
+
 function fmt(value) {
   return new Intl.NumberFormat(
     'th-TH'
@@ -231,6 +255,11 @@ export default function Page() {
   const [saving, setSaving] =
     useState(false);
 
+  const [
+    lastSavedAt,
+    setLastSavedAt,
+  ] = useState(null);
+
 
   const summary =
     useMemo(
@@ -327,6 +356,12 @@ export default function Page() {
         );
 
 
+        setLastSavedAt(
+          data.snapshot
+            .created_at ?? null
+        );
+
+
         setMessage(
           data.snapshot
             .progress_date
@@ -390,6 +425,13 @@ export default function Page() {
       }
 
 
+      setLastSavedAt(
+        data.snapshot
+          ?.created_at ??
+          new Date().toISOString()
+      );
+
+
       setMessage(
         `บันทึก Progress วันที่ ${thaiDate(
           date
@@ -444,8 +486,6 @@ export default function Page() {
   return (
     <main className="pageShell">
 
-      {/* HEADER */}
-
       <header className="appHeader">
 
         <div className="brandBlock">
@@ -476,8 +516,6 @@ export default function Page() {
 
       </header>
 
-
-      {/* HERO */}
 
       <section className="heroCard">
 
@@ -588,15 +626,26 @@ export default function Page() {
 
 
           <div className="saveMessage">
-            {message}
+
+            <div>
+              {message}
+            </div>
+
+            {lastSavedAt && (
+              <div>
+                บันทึกล่าสุด:{' '}
+                {thaiDateTime(
+                  lastSavedAt
+                )} น.
+              </div>
+            )}
+
           </div>
 
         </div>
 
       </section>
 
-
-      {/* PLAN INFO */}
 
       <section className="metricGrid">
 
@@ -648,8 +697,6 @@ export default function Page() {
 
       </section>
 
-
-      {/* SAMPLE METRICS */}
 
       <section className="metricGrid">
 
@@ -741,8 +788,6 @@ export default function Page() {
 
       </section>
 
-
-      {/* MAIN SAMPLE INPUT */}
 
       <section className="panel">
 
@@ -918,8 +963,6 @@ export default function Page() {
       </section>
 
 
-      {/* ADDITIONAL WORK */}
-
       <section className="panel">
 
         <div className="panelHeading">
@@ -1017,8 +1060,6 @@ export default function Page() {
 
       </section>
 
-
-      {/* DELIVERY PLAN */}
 
       <section className="panel schedulePanel">
 

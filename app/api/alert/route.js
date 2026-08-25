@@ -96,6 +96,30 @@ function thaiDate(
 }
 
 
+function thaiDateTime(
+  timestamp
+) {
+  if (!timestamp) return '-';
+
+  return new Intl.DateTimeFormat(
+    'th-TH-u-ca-buddhist',
+    {
+      timeZone:
+        TIME_ZONE,
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }
+  ).format(
+    new Date(timestamp)
+  );
+}
+
+
 function number(value) {
   return new Intl.NumberFormat(
     'th-TH'
@@ -418,7 +442,8 @@ function buildProgressMessage(
   today,
   summary,
   additional,
-  milestone
+  milestone,
+  createdAt
 ) {
   const sampleLines =
     buildSampleLines(
@@ -451,7 +476,10 @@ function buildProgressMessage(
     `${header}\n` +
     `วันที่ ${thaiDate(
       today
-    )}\n\n` +
+    )}\n` +
+    `บันทึกล่าสุด ${thaiDateTime(
+      createdAt
+    )} น.\n\n` +
 
     `SAMPLE PROGRESS\n\n` +
 
@@ -509,6 +537,12 @@ function buildNoUpdateMessage(
         latestSnapshot
           .progress_date
       )}`;
+
+    message +=
+      `\nบันทึกเมื่อ: ${thaiDateTime(
+        latestSnapshot
+          .created_at
+      )} น.`;
   }
 
   message +=
@@ -518,10 +552,6 @@ function buildNoUpdateMessage(
   return message;
 }
 
-
-// ======================================================
-// CRON
-// ======================================================
 
 export async function GET() {
   try {
@@ -606,7 +636,8 @@ export async function GET() {
         today,
         summary,
         additional,
-        milestone
+        milestone,
+        todaySnapshot.created_at
       );
 
 
@@ -626,6 +657,8 @@ export async function GET() {
         summary.behind,
       additionalBehind:
         additional.behind,
+      createdAt:
+        todaySnapshot.created_at,
     });
   }
 
