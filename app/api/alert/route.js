@@ -1,56 +1,74 @@
 // app/api/alert/route.js
 
-import { NextResponse } from 'next/server';
+import {
+  NextResponse,
+} from 'next/server';
 
 import {
   ITEMS,
   projectSummary,
+  additionalWorkSummary,
   COLLECTION_START_DATE,
   PROGRESS_END_DATE,
   MILESTONE_DATES,
 } from '../../../lib/targets.js';
 
-export const dynamic = 'force-dynamic';
 
-const TIME_ZONE = 'Asia/Bangkok';
+export const dynamic =
+  'force-dynamic';
 
 
-// ======================================================
-// DATE UTIL
-// ======================================================
+const TIME_ZONE =
+  'Asia/Bangkok';
 
-function bangkokDateString(date = new Date()) {
+
+function bangkokDateString(
+  date = new Date()
+) {
   const parts =
-    new Intl.DateTimeFormat('en-US', {
-      timeZone: TIME_ZONE,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).formatToParts(date);
+    new Intl.DateTimeFormat(
+      'en-US',
+      {
+        timeZone:
+          TIME_ZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }
+    ).formatToParts(date);
 
   const year =
     parts.find(
-      (part) => part.type === 'year'
+      (p) =>
+        p.type === 'year'
     )?.value;
 
   const month =
     parts.find(
-      (part) => part.type === 'month'
+      (p) =>
+        p.type === 'month'
     )?.value;
 
   const day =
     parts.find(
-      (part) => part.type === 'day'
+      (p) =>
+        p.type === 'day'
     )?.value;
 
   return `${year}-${month}-${day}`;
 }
 
 
-function thaiDate(dateString) {
+function thaiDate(
+  dateString
+) {
   if (!dateString) return '-';
 
-  const [year, month, day] =
+  const [
+    year,
+    month,
+    day,
+  ] =
     dateString
       .split('-')
       .map(Number);
@@ -70,9 +88,11 @@ function thaiDate(dateString) {
     'ธ.ค.',
   ];
 
-  return `${day} ${
-    months[month - 1]
-  } ${year + 543}`;
+  return (
+    `${day} ` +
+    `${months[month - 1]} ` +
+    `${year + 543}`
+  );
 }
 
 
@@ -92,29 +112,26 @@ function percent(value) {
 }
 
 
-// ======================================================
-// SUPABASE
-// ======================================================
-
 function supabaseHeaders() {
-  const secretKey =
-    process.env.SUPABASE_SECRET_KEY;
+  const secret =
+    process.env
+      .SUPABASE_SECRET_KEY;
 
-  if (!secretKey) {
+  if (!secret) {
     throw new Error(
       'SUPABASE_SECRET_KEY is missing'
     );
   }
 
   return {
-    apikey: secretKey,
+    apikey: secret,
     Authorization:
-      `Bearer ${secretKey}`,
+      `Bearer ${secret}`,
   };
 }
 
 
-function getSupabaseUrl() {
+function supabaseUrl() {
   const url =
     process.env.SUPABASE_URL;
 
@@ -128,18 +145,11 @@ function getSupabaseUrl() {
 }
 
 
-// ======================================================
-// GET SNAPSHOT OF SPECIFIC DATE
-// ======================================================
-
 async function getSnapshotForDate(
   dateString
 ) {
-  const supabaseUrl =
-    getSupabaseUrl();
-
   const url =
-    `${supabaseUrl}` +
+    `${supabaseUrl()}` +
     `/rest/v1/progress_snapshots` +
     `?select=*` +
     `&progress_date=eq.${dateString}` +
@@ -148,20 +158,14 @@ async function getSnapshotForDate(
 
   const response =
     await fetch(url, {
-      method: 'GET',
-
       headers:
         supabaseHeaders(),
-
       cache: 'no-store',
     });
 
   if (!response.ok) {
-    const text =
-      await response.text();
-
     throw new Error(
-      `Supabase error ${response.status}: ${text}`
+      await response.text()
     );
   }
 
@@ -172,18 +176,11 @@ async function getSnapshotForDate(
 }
 
 
-// ======================================================
-// GET LATEST SNAPSHOT UP TO TODAY
-// ======================================================
-
 async function getLatestSnapshot(
   today
 ) {
-  const supabaseUrl =
-    getSupabaseUrl();
-
   const url =
-    `${supabaseUrl}` +
+    `${supabaseUrl()}` +
     `/rest/v1/progress_snapshots` +
     `?select=*` +
     `&progress_date=lte.${today}` +
@@ -192,20 +189,14 @@ async function getLatestSnapshot(
 
   const response =
     await fetch(url, {
-      method: 'GET',
-
       headers:
         supabaseHeaders(),
-
       cache: 'no-store',
     });
 
   if (!response.ok) {
-    const text =
-      await response.text();
-
     throw new Error(
-      `Supabase error ${response.status}: ${text}`
+      await response.text()
     );
   }
 
@@ -215,10 +206,6 @@ async function getLatestSnapshot(
   return rows?.[0] ?? null;
 }
 
-
-// ======================================================
-// LINE
-// ======================================================
 
 async function sendLine(text) {
   const token =
@@ -248,35 +235,31 @@ async function sendLine(text) {
             'application/json',
         },
 
-        body: JSON.stringify({
-          to,
+        body:
+          JSON.stringify({
+            to,
 
-          messages: [
-            {
-              type: 'text',
-              text,
-            },
-          ],
-        }),
+            messages: [
+              {
+                type: 'text',
+                text,
+              },
+            ],
+          }),
       }
     );
 
   if (!response.ok) {
-    const text =
-      await response.text();
-
     throw new Error(
-      `LINE error ${response.status}: ${text}`
+      await response.text()
     );
   }
 }
 
 
-// ======================================================
-// ACTUAL VALUES
-// ======================================================
-
-function snapshotValues(snapshot) {
+function snapshotValues(
+  snapshot
+) {
   const values = {};
 
   for (
@@ -285,312 +268,259 @@ function snapshotValues(snapshot) {
   ) {
     values[key] =
       Number(
-        snapshot?.[key] ?? 0
+        snapshot?.[key] ??
+        0
       );
   }
+
+  values.sg_measured =
+    Number(
+      snapshot
+        ?.sg_measured ?? 0
+    );
+
+  values.duplicate_collected =
+    Number(
+      snapshot
+        ?.duplicate_collected ??
+        0
+    );
+
+  values.heavy_counted =
+    Number(
+      snapshot
+        ?.heavy_counted ?? 0
+    );
 
   return values;
 }
 
 
-// ======================================================
-// ITEM MESSAGE
-// ======================================================
+function statusIcon(
+  behind,
+  target
+) {
+  if (target === 0) {
+    return '⚪';
+  }
 
-function buildItemLines(summary) {
+  return behind
+    ? '🔴'
+    : '🟢';
+}
+
+
+function buildSampleLines(
+  summary
+) {
   return Object.values(
     summary.items
-  ).map((item) => {
-    const difference =
-      item.actual -
-      item.target;
+  ).map(
+    (item) => {
+      const icon =
+        statusIcon(
+          item.behind,
+          item.target
+        );
 
-    let icon = '⚪';
-    let detail =
-      'ยังไม่ถึงช่วง Target';
-
-    if (item.target > 0) {
-      if (difference > 0) {
-        icon = '🟢';
-
-        detail =
-          `เกิน Target ${number(
-            difference
-          )}`;
-      }
-
-      else if (
-        difference === 0
-      ) {
-        icon = '🟢';
-
-        detail =
-          'ถึง Target';
-      }
-
-      else {
-        icon = '🔴';
-
-        detail =
-          `ขาด ${number(
-            Math.abs(
-              difference
-            )
-          )}`;
-      }
+      return (
+        `${icon} ${item.label}\n` +
+        `Actual ${number(
+          item.actual
+        )} / ${number(
+          item.total
+        )}\n` +
+        `Target ${number(
+          item.target
+        )} / ${number(
+          item.total
+        )}`
+      );
     }
+  );
+}
 
-    return (
-      `${icon} ${item.label}\n` +
+
+function buildAdditionalLines(
+  additional
+) {
+  const sg =
+    additional.sg;
+
+  const duplicate =
+    additional.duplicate;
+
+  const heavy =
+    additional.heavyCount;
+
+
+  const sgIcon =
+    statusIcon(
+      sg.behind,
+      sg.target
+    );
+
+  const duplicateIcon =
+    duplicate.behind
+      ? '🔴'
+      : '🟢';
+
+  const heavyIcon =
+    statusIcon(
+      heavy.behind,
+      heavy.target
+    );
+
+
+  return [
+    (
+      `${sgIcon} ตรวจวัดค่า ถ.พ.\n` +
       `Actual ${number(
-        item.actual
+        sg.actual
       )} / ${number(
-        item.total
+        sg.total
       )}\n` +
       `Target ${number(
-        item.target
+        sg.target
       )} / ${number(
-        item.total
+        sg.total
+      )}`
+    ),
+
+    (
+      `${duplicateIcon} QA/QC Duplicate\n` +
+      `Collected ${number(
+        duplicate.actual
       )}\n` +
-      `${detail} ตัวอย่าง`
-    );
-  });
+      `Required ${number(
+        duplicate.target
+      )}`
+    ),
+
+    (
+      `${heavyIcon} Heavy Mineral Count\n` +
+      `Actual ${number(
+        heavy.actual
+      )} / ${number(
+        heavy.total
+      )}\n` +
+      `Target ${number(
+        heavy.target
+      )} / ${number(
+        heavy.total
+      )}`
+    ),
+  ];
 }
 
 
-// ======================================================
-// DAILY MESSAGE
-// ======================================================
-
-function buildDailyMessage(
+function buildProgressMessage(
   today,
-  summary
-) {
-  const itemLines =
-    buildItemLines(summary);
-
-  const overallDifference =
-    summary.actualTotal -
-    summary.targetTotal;
-
-  let overallDetail;
-
-  if (
-    overallDifference > 0
-  ) {
-    overallDetail =
-      `เกิน Target รวม ${number(
-        overallDifference
-      )} ตัวอย่าง`;
-  }
-
-  else if (
-    overallDifference < 0
-  ) {
-    overallDetail =
-      `ต่ำกว่า Target รวม ${number(
-        Math.abs(
-          overallDifference
-        )
-      )} ตัวอย่าง`;
-  }
-
-  else {
-    overallDetail =
-      'Actual เท่ากับ Target';
-  }
-
-  const status =
-    summary.behind
-      ? '🔴 มีรายการต่ำกว่า Target'
-      : '🟢 ทุกรายการ On Track';
-
-  return (
-    `📊 DAILY PROGRESS\n` +
-    `วันที่ ${thaiDate(
-      today
-    )}\n\n` +
-
-    `${itemLines.join(
-      '\n\n'
-    )}\n\n` +
-
-    `────────────\n` +
-
-    `Overall Actual\n` +
-    `${number(
-      summary.actualTotal
-    )} / ${number(
-      summary.projectTotal
-    )} ` +
-    `(${percent(
-      summary.actualPercent
-    )})\n\n` +
-
-    `Overall Target\n` +
-    `${number(
-      summary.targetTotal
-    )} / ${number(
-      summary.projectTotal
-    )} ` +
-    `(${percent(
-      summary.targetPercent
-    )})\n\n` +
-
-    `${overallDetail}\n\n` +
-
-    `สถานะ: ${status}`
-  );
-}
-
-
-// ======================================================
-// MILESTONE MESSAGE
-// ======================================================
-
-function buildMilestoneMessage(
-  today,
-  summary
-) {
-  const itemLines =
-    buildItemLines(summary);
-
-  const status =
-    summary.behind
-      ? '🔴 มีรายการต่ำกว่าเป้าหมาย'
-      : '🟢 Milestone On Track';
-
-  return (
-    `📌 MILESTONE SUMMARY\n` +
-    `วันที่ ${thaiDate(
-      today
-    )}\n\n` +
-
-    `${itemLines.join(
-      '\n\n'
-    )}\n\n` +
-
-    `────────────\n` +
-
-    `Overall Actual\n` +
-    `${number(
-      summary.actualTotal
-    )} / ${number(
-      summary.projectTotal
-    )} ` +
-    `(${percent(
-      summary.actualPercent
-    )})\n\n` +
-
-    `Overall Target\n` +
-    `${number(
-      summary.targetTotal
-    )} / ${number(
-      summary.projectTotal
-    )} ` +
-    `(${percent(
-      summary.targetPercent
-    )})\n\n` +
-
-    `สถานะ: ${status}`
-  );
-}
-
-
-// ======================================================
-// NO UPDATE MESSAGE
-// ======================================================
-
-function buildNoUpdateMessage(
-  today,
-  targetSummary,
-  latestSnapshot,
-  latestSummary,
+  summary,
+  additional,
   milestone
 ) {
+  const sampleLines =
+    buildSampleLines(
+      summary
+    );
+
+  const additionalLines =
+    buildAdditionalLines(
+      additional
+    );
+
+  const anyBehind =
+    summary.behind ||
+    additional.behind;
+
+
   const header =
     milestone
-      ? '📌 MILESTONE — NO UPDATE'
-      : '🟠 NO PROGRESS UPDATE';
+      ? '📌 MILESTONE SUMMARY'
+      : '📊 DAILY PROGRESS';
 
-  let message =
+
+  const finalStatus =
+    anyBehind
+      ? '🔴 มีงานต่ำกว่า Target'
+      : '🟢 งานทั้งหมด On Track';
+
+
+  return (
     `${header}\n` +
     `วันที่ ${thaiDate(
       today
     )}\n\n` +
 
-    `ยังไม่มีการบันทึก Progress ` +
-    `ของวันที่ ${thaiDate(
+    `SAMPLE PROGRESS\n\n` +
+
+    `${sampleLines.join(
+      '\n\n'
+    )}\n\n` +
+
+    `────────────\n` +
+
+    `Overall Sample\n` +
+    `${number(
+      summary.actualTotal
+    )} / ${number(
+      summary.projectTotal
+    )} ` +
+    `(${percent(
+      summary.actualPercent
+    )})\n` +
+
+    `Target ${number(
+      summary.targetTotal
+    )} / ${number(
+      summary.projectTotal
+    )} ` +
+    `(${percent(
+      summary.targetPercent
+    )})\n\n` +
+
+    `ADDITIONAL WORK / QA-QC\n\n` +
+
+    `${additionalLines.join(
+      '\n\n'
+    )}\n\n` +
+
+    `────────────\n` +
+    `สถานะรวม: ${finalStatus}`
+  );
+}
+
+
+function buildNoUpdateMessage(
+  today,
+  latestSnapshot
+) {
+  let message =
+    `🟠 NO PROGRESS UPDATE\n` +
+    `วันที่ ${thaiDate(
       today
-    )}\n`;
+    )}\n\n` +
+    `ยังไม่มีการบันทึก Progress ของวันนี้`;
 
   if (latestSnapshot) {
     message +=
-      `\nข้อมูลล่าสุด: ` +
-      `${thaiDate(
+      `\n\nข้อมูลล่าสุด: ${thaiDate(
         latestSnapshot
           .progress_date
-      )}\n`;
-
-    message +=
-      `Actual ล่าสุด: ` +
-      `${number(
-        latestSummary.actualTotal
-      )} / ${number(
-        latestSummary.projectTotal
-      )} ` +
-      `(${percent(
-        latestSummary.actualPercent
-      )})\n`;
-  }
-
-  else {
-    message +=
-      `\nยังไม่มีข้อมูล Progress ` +
-      `ที่บันทึกไว้\n`;
+      )}`;
   }
 
   message +=
-    `\nTarget วันนี้: ` +
-    `${number(
-      targetSummary.targetTotal
-    )} / ${number(
-      targetSummary.projectTotal
-    )} ` +
-    `(${percent(
-      targetSummary.targetPercent
-    )})`;
+    `\n\nกรุณาอัปเดต Sample Progress ` +
+    `และ Additional Work / QA-QC`;
 
-  message +=
-    `\n\nTarget ราย Item\n`;
-
-  for (
-    const item
-    of Object.values(
-      targetSummary.items
-    )
-  ) {
-    message +=
-      `• ${item.label}: ` +
-      `${number(
-        item.target
-      )} / ${number(
-        item.total
-      )}\n`;
-  }
-
-  if (milestone) {
-    message +=
-      `\n⚠️ วันนี้เป็นวัน Milestone ` +
-      `กรุณาอัปเดต Progress`;
-  }
-
-  return message.trim();
+  return message;
 }
 
 
 // ======================================================
-// API
+// CRON
 // ======================================================
 
 export async function GET() {
@@ -598,9 +528,6 @@ export async function GET() {
     const today =
       bangkokDateString();
 
-    // --------------------------------------------------
-    // ตรวจช่วงการติดตาม
-    // --------------------------------------------------
 
     if (
       today <
@@ -618,19 +545,11 @@ export async function GET() {
     }
 
 
-    // --------------------------------------------------
-    // วันนี้เป็น Milestone หรือไม่
-    // --------------------------------------------------
-
     const milestone =
       MILESTONE_DATES.includes(
         today
       );
 
-
-    // --------------------------------------------------
-    // หาข้อมูลของ "วันนี้" โดยตรง
-    // --------------------------------------------------
 
     const todaySnapshot =
       await getSnapshotForDate(
@@ -638,131 +557,75 @@ export async function GET() {
       );
 
 
-    // ==================================================
-    // CASE 1
-    // วันนี้มีการบันทึก Progress แล้ว
-    // ==================================================
-
-    if (todaySnapshot) {
-      const actualValues =
-        snapshotValues(
-          todaySnapshot
+    if (!todaySnapshot) {
+      const latest =
+        await getLatestSnapshot(
+          today
         );
-
-      const summary =
-        projectSummary(
-          today,
-          actualValues
-        );
-
-      const message =
-        milestone
-          ? buildMilestoneMessage(
-              today,
-              summary
-            )
-          : buildDailyMessage(
-              today,
-              summary
-            );
 
       await sendLine(
-        message
+        buildNoUpdateMessage(
+          today,
+          latest
+        )
       );
 
       return NextResponse.json({
         ok: true,
-
         sent: true,
-
-        type:
-          milestone
-            ? 'milestone'
-            : summary.behind
-            ? 'daily-behind'
-            : 'daily-on-track',
-
+        type: milestone
+          ? 'milestone-no-update'
+          : 'no-update',
         today,
-
-        progressDate:
-          todaySnapshot
-            .progress_date,
-
-        actual:
-          summary.actualTotal,
-
-        target:
-          summary.targetTotal,
-
-        behind:
-          summary.behind,
       });
     }
 
 
-    // ==================================================
-    // CASE 2
-    // วันนี้ยังไม่มี Progress
-    // ==================================================
-
-    const latestSnapshot =
-      await getLatestSnapshot(
-        today
+    const values =
+      snapshotValues(
+        todaySnapshot
       );
 
-    const targetSummary =
+
+    const summary =
       projectSummary(
         today,
-        {}
+        values
       );
 
-    let latestSummary = null;
 
-    if (latestSnapshot) {
-      latestSummary =
-        projectSummary(
-          latestSnapshot
-            .progress_date,
+    const additional =
+      additionalWorkSummary(
+        today,
+        values
+      );
 
-          snapshotValues(
-            latestSnapshot
-          )
-        );
-    }
 
     const message =
-      buildNoUpdateMessage(
+      buildProgressMessage(
         today,
-        targetSummary,
-        latestSnapshot,
-        latestSummary,
+        summary,
+        additional,
         milestone
       );
+
 
     await sendLine(
       message
     );
 
+
     return NextResponse.json({
       ok: true,
-
       sent: true,
-
-      type:
-        milestone
-          ? 'milestone-no-update'
-          : 'no-update',
-
+      type: milestone
+        ? 'milestone'
+        : 'daily',
       today,
-
-      latestProgressDate:
-        latestSnapshot
-          ?.progress_date ??
-        null,
-
-      target:
-        targetSummary
-          .targetTotal,
+      sampleBehind:
+        summary.behind,
+      additionalBehind:
+        additional.behind,
     });
   }
 
@@ -775,12 +638,10 @@ export async function GET() {
     return NextResponse.json(
       {
         ok: false,
-
         error:
           error?.message ||
           'Unknown error',
       },
-
       {
         status: 500,
       }
