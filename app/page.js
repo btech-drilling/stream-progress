@@ -21,6 +21,10 @@ import {
 } from '../lib/targets.js';
 
 
+// ======================================================
+// CONSTANTS
+// ======================================================
+
 const ITEM_KEYS =
   Object.keys(ITEMS);
 
@@ -38,6 +42,10 @@ const INITIAL_VALUES = {
 };
 
 
+// ======================================================
+// DATE
+// ======================================================
+
 function todayBangkok() {
   const parts =
     new Intl.DateTimeFormat(
@@ -45,6 +53,7 @@ function todayBangkok() {
       {
         timeZone:
           'Asia/Bangkok',
+
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
@@ -53,20 +62,27 @@ function todayBangkok() {
       new Date()
     );
 
+
   const year =
     parts.find(
-      (p) => p.type === 'year'
+      (p) =>
+        p.type === 'year'
     )?.value;
+
 
   const month =
     parts.find(
-      (p) => p.type === 'month'
+      (p) =>
+        p.type === 'month'
     )?.value;
+
 
   const day =
     parts.find(
-      (p) => p.type === 'day'
+      (p) =>
+        p.type === 'day'
     )?.value;
+
 
   return `${year}-${month}-${day}`;
 }
@@ -75,7 +91,10 @@ function todayBangkok() {
 function thaiDate(
   dateString
 ) {
-  if (!dateString) return '-';
+  if (!dateString) {
+    return '-';
+  }
+
 
   const [
     year,
@@ -85,6 +104,7 @@ function thaiDate(
     dateString
       .split('-')
       .map(Number);
+
 
   const months = [
     'ม.ค.',
@@ -101,6 +121,7 @@ function thaiDate(
     'ธ.ค.',
   ];
 
+
   return (
     `${day} ` +
     `${months[month - 1]} ` +
@@ -112,19 +133,25 @@ function thaiDate(
 function thaiDateTime(
   timestamp
 ) {
-  if (!timestamp) return '-';
+  if (!timestamp) {
+    return '-';
+  }
+
 
   return new Intl.DateTimeFormat(
     'th-TH-u-ca-buddhist',
     {
       timeZone:
         'Asia/Bangkok',
+
       day: 'numeric',
       month: 'short',
       year: 'numeric',
+
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
+
       hour12: false,
     }
   ).format(
@@ -132,6 +159,10 @@ function thaiDateTime(
   );
 }
 
+
+// ======================================================
+// FORMAT
+// ======================================================
 
 function fmt(value) {
   return new Intl.NumberFormat(
@@ -149,6 +180,10 @@ function pct(value) {
 }
 
 
+// ======================================================
+// STATUS
+// ======================================================
+
 function getStatus(
   actual,
   target
@@ -162,6 +197,7 @@ function getStatus(
     };
   }
 
+
   if (actual < target) {
     return {
       label: 'Behind',
@@ -172,6 +208,7 @@ function getStatus(
         )}`,
     };
   }
+
 
   if (actual > target) {
     return {
@@ -184,13 +221,19 @@ function getStatus(
     };
   }
 
+
   return {
     label: 'On Track',
     tone: 'good',
-    detail: 'ถึง Target',
+    detail:
+      'ถึง Target',
   };
 }
 
+
+// ======================================================
+// NEXT MILESTONE
+// ======================================================
 
 function nextMilestone(
   dateString
@@ -201,27 +244,32 @@ function nextMilestone(
       'รอบที่ 1',
       '5 ก.ย. 2569',
     ],
+
     [
       '2026-09-20',
       'รอบที่ 2',
       '20 ก.ย. 2569',
     ],
+
     [
       '2026-09-30',
       'รอบที่ 3',
       '30 ก.ย. 2569',
     ],
+
     [
       '2026-10-05',
       'รอบที่ 4',
       '5 ต.ค. 2569',
     ],
+
     [
       '2026-10-15',
       'ดินชั้น B',
       '15 ต.ค. 2569',
     ],
   ];
+
 
   return (
     milestones.find(
@@ -236,30 +284,67 @@ function nextMilestone(
 }
 
 
+// ======================================================
+// PAGE
+// ======================================================
+
 export default function Page() {
-  const [date, setDate] =
+
+  // ----------------------------------------------------
+  // STATE
+  // ----------------------------------------------------
+
+  const [
+    date,
+    setDate,
+  ] =
     useState(
       todayBangkok()
     );
 
-  const [values, setValues] =
+
+  const [
+    values,
+    setValues,
+  ] =
+    useState({
+      ...INITIAL_VALUES,
+    });
+
+
+  const [
+    message,
+    setMessage,
+  ] =
     useState(
-      INITIAL_VALUES
+      'กำลังโหลดข้อมูล...'
     );
 
-  const [message, setMessage] =
-    useState(
-      'กำลังโหลดข้อมูลล่าสุด...'
-    );
 
-  const [saving, setSaving] =
+  const [
+    saving,
+    setSaving,
+  ] =
     useState(false);
+
+
+  const [
+    loading,
+    setLoading,
+  ] =
+    useState(false);
+
 
   const [
     lastSavedAt,
     setLastSavedAt,
-  ] = useState(null);
+  ] =
+    useState(null);
 
+
+  // ----------------------------------------------------
+  // CALCULATIONS
+  // ----------------------------------------------------
 
   const summary =
     useMemo(
@@ -268,7 +353,10 @@ export default function Page() {
           date,
           values
         ),
-      [date, values]
+      [
+        date,
+        values,
+      ]
     );
 
 
@@ -279,14 +367,19 @@ export default function Page() {
           date,
           values
         ),
-      [date, values]
+      [
+        date,
+        values,
+      ]
     );
 
 
   const planDay =
     useMemo(
       () =>
-        planDayForDate(date),
+        planDayForDate(
+          date
+        ),
       [date]
     );
 
@@ -294,25 +387,96 @@ export default function Page() {
   const milestone =
     useMemo(
       () =>
-        nextMilestone(date),
+        nextMilestone(
+          date
+        ),
       [date]
     );
 
 
+  // ====================================================
+  // LOAD PROGRESS BY SELECTED DATE
+  // ====================================================
+
   useEffect(() => {
-    fetch('/api/progress')
-      .then(
-        (response) =>
-          response.json()
-      )
-      .then((data) => {
-        if (!data.snapshot) {
-          setMessage(
-            'ยังไม่มีข้อมูลที่บันทึก'
+
+    let cancelled = false;
+
+
+    async function loadProgress() {
+
+      try {
+
+        setLoading(true);
+
+
+        setMessage(
+          `กำลังโหลดข้อมูลวันที่ ${thaiDate(
+            date
+          )}...`
+        );
+
+
+        const response =
+          await fetch(
+            `/api/progress?date=${encodeURIComponent(
+              date
+            )}&t=${Date.now()}`,
+            {
+              method: 'GET',
+
+              cache: 'no-store',
+            }
           );
+
+
+        const data =
+          await response.json();
+
+
+        if (!response.ok) {
+          throw new Error(
+            data.error ||
+            'Load failed'
+          );
+        }
+
+
+        if (cancelled) {
+          return;
+        }
+
+
+        // ------------------------------------------------
+        // ไม่มีข้อมูลของวันที่เลือก
+        // ------------------------------------------------
+
+        if (!data.snapshot) {
+
+          setValues({
+            ...INITIAL_VALUES,
+          });
+
+
+          setLastSavedAt(
+            null
+          );
+
+
+          setMessage(
+            `ยังไม่มีข้อมูลวันที่ ${thaiDate(
+              date
+            )}`
+          );
+
 
           return;
         }
+
+
+        // ------------------------------------------------
+        // มีข้อมูล
+        // ------------------------------------------------
 
         const nextValues = {
           ...INITIAL_VALUES,
@@ -323,10 +487,12 @@ export default function Page() {
           const key
           of ITEM_KEYS
         ) {
+
           nextValues[key] =
             Number(
-              data.snapshot[key] ??
-              0
+              data.snapshot[
+                key
+              ] ?? 0
             );
         }
 
@@ -337,12 +503,14 @@ export default function Page() {
               .sg_measured ?? 0
           );
 
+
         nextValues.duplicate_collected =
           Number(
             data.snapshot
               .duplicate_collected ??
               0
           );
+
 
         nextValues.heavy_counted =
           Number(
@@ -358,36 +526,73 @@ export default function Page() {
 
         setLastSavedAt(
           data.snapshot
-            .created_at ?? null
+            .created_at ??
+          null
         );
 
 
         setMessage(
-          data.snapshot
-            .progress_date
-            ? `โหลดข้อมูลล่าสุด: ${thaiDate(
-                data.snapshot
-                  .progress_date
-              )}`
-            : 'โหลดข้อมูลล่าสุดแล้ว'
+          `โหลดข้อมูลวันที่ ${thaiDate(
+            data.snapshot
+              .progress_date
+          )} แล้ว`
         );
-      })
-      .catch(() => {
-        setMessage(
-          'โหลดข้อมูลไม่สำเร็จ'
-        );
-      });
-  }, []);
 
+      }
+
+      catch (error) {
+
+        console.error(
+          'Load progress error:',
+          error
+        );
+
+
+        if (!cancelled) {
+
+          setMessage(
+            'โหลดข้อมูลไม่สำเร็จ'
+          );
+        }
+
+      }
+
+      finally {
+
+        if (!cancelled) {
+          setLoading(false);
+        }
+
+      }
+    }
+
+
+    loadProgress();
+
+
+    return () => {
+      cancelled = true;
+    };
+
+  }, [date]);
+
+
+  // ====================================================
+  // SAVE PROGRESS
+  // ====================================================
 
   async function save() {
-    setSaving(true);
-
-    setMessage(
-      'กำลังบันทึก...'
-    );
 
     try {
+
+      setSaving(true);
+
+
+      setMessage(
+        'กำลังบันทึก...'
+      );
+
+
       const response =
         await fetch(
           '/api/progress',
@@ -399,10 +604,13 @@ export default function Page() {
                 'application/json',
             },
 
+            cache: 'no-store',
+
             body:
               JSON.stringify({
                 progress_date:
                   date,
+
                 ...values,
               }),
           }
@@ -414,21 +622,23 @@ export default function Page() {
 
 
       if (!response.ok) {
-        setMessage(
-          `บันทึกไม่สำเร็จ: ${
-            data.error ||
-            'unknown error'
-          }`
-        );
 
-        return;
+        throw new Error(
+          data.error ||
+          'Save failed'
+        );
       }
 
 
-      setLastSavedAt(
+      const createdAt =
         data.snapshot
           ?.created_at ??
-          new Date().toISOString()
+        new Date()
+          .toISOString();
+
+
+      setLastSavedAt(
+        createdAt
       );
 
 
@@ -437,41 +647,70 @@ export default function Page() {
           date
         )} เรียบร้อย`
       );
+
     }
 
-    catch {
-      setMessage(
-        'บันทึกไม่สำเร็จ: เชื่อมต่อระบบไม่ได้'
+    catch (error) {
+
+      console.error(
+        'Save progress error:',
+        error
       );
+
+
+      setMessage(
+        `บันทึกไม่สำเร็จ: ${
+          error?.message ||
+          'เชื่อมต่อระบบไม่ได้'
+        }`
+      );
+
     }
 
     finally {
+
       setSaving(false);
+
     }
   }
 
+
+  // ====================================================
+  // INPUT
+  // ====================================================
 
   function updateValue(
     key,
     value,
     max
   ) {
+
+    const nextValue =
+      Math.max(
+        0,
+        Math.min(
+          max,
+          Number(
+            value || 0
+          )
+        )
+      );
+
+
     setValues(
       (current) => ({
         ...current,
 
         [key]:
-          Math.max(
-            0,
-            Math.min(
-              max,
-              Number(value || 0)
-            )
-          ),
+          nextValue,
       })
     );
   }
 
+
+  // ====================================================
+  // OVERALL
+  // ====================================================
 
   const overallGap =
     summary.actualPercent -
@@ -483,8 +722,17 @@ export default function Page() {
     additional.behind;
 
 
+  // ====================================================
+  // UI
+  // ====================================================
+
   return (
+
     <main className="pageShell">
+
+      {/* =================================================
+          HEADER
+      ================================================= */}
 
       <header className="appHeader">
 
@@ -494,11 +742,13 @@ export default function Page() {
             B
           </div>
 
+
           <div>
 
             <div className="brandTitle">
               BTECH
             </div>
+
 
             <div className="brandSub">
               Sample Progress Control
@@ -510,12 +760,19 @@ export default function Page() {
 
 
         <div className="headerMeta">
+
           <span className="liveDot" />
+
           Online dashboard
+
         </div>
 
       </header>
 
+
+      {/* =================================================
+          HERO
+      ================================================= */}
 
       <section className="heroCard">
 
@@ -529,17 +786,22 @@ export default function Page() {
           <div className="heroHeadline">
 
             <span className="heroPercent">
+
               {pct(
                 summary.actualPercent
               )}%
+
             </span>
 
+
             <span className="heroStatusText">
+
               {
                 overallBehind
                   ? 'มีงานต่ำกว่าแผน'
                   : 'ตามแผน'
               }
+
             </span>
 
           </div>
@@ -580,17 +842,28 @@ export default function Page() {
 
 
           <div className="heroFoot">
+
             Overall Sample Total =
             {' '}
-            {fmt(PROJECT_TOTAL)}
+            {fmt(
+              PROJECT_TOTAL
+            )}
             {' '}
             ตัวอย่าง
-            · Additional Work
+
+            {' · '}
+
+            Additional Work
             ไม่รวมในยอดนี้
+
           </div>
 
         </div>
 
+
+        {/* -----------------------------------------------
+            CONTROL
+        ----------------------------------------------- */}
 
         <div className="controlPanel">
 
@@ -598,11 +871,23 @@ export default function Page() {
             Progress ณ วันที่
           </label>
 
+
           <input
             id="progress-date"
+
             type="date"
+
             value={date}
-            max={todayBangkok()}
+
+            max={
+              todayBangkok()
+            }
+
+            disabled={
+              saving ||
+              loading
+            }
+
             onChange={
               (event) =>
                 setDate(
@@ -614,14 +899,23 @@ export default function Page() {
 
           <button
             className="primaryButton"
+
             onClick={save}
-            disabled={saving}
+
+            disabled={
+              saving ||
+              loading
+            }
           >
+
             {
               saving
                 ? 'กำลังบันทึก...'
+                : loading
+                ? 'กำลังโหลด...'
                 : 'บันทึก Progress'
             }
+
           </button>
 
 
@@ -631,13 +925,19 @@ export default function Page() {
               {message}
             </div>
 
+
             {lastSavedAt && (
+
               <div>
+
                 บันทึกล่าสุด:{' '}
+
                 {thaiDateTime(
                   lastSavedAt
                 )} น.
+
               </div>
+
             )}
 
           </div>
@@ -647,38 +947,49 @@ export default function Page() {
       </section>
 
 
+      {/* =================================================
+          PLAN INFORMATION
+      ================================================= */}
+
       <section className="metricGrid">
 
         <Metric
           title="Project Start"
+
           value={
             thaiDate(
               COLLECTION_START_DATE
             )
           }
+
           sub="Day 1"
         />
 
 
         <Metric
           title="วันที่ตามแผน"
+
           value={
             planDay.label
           }
+
           sub={
             `แผนทั้งหมด ${PLAN_TOTAL_DAYS} วัน`
           }
+
           tone="good"
         />
 
 
         <Metric
           title="Final Delivery"
+
           value={
             thaiDate(
               PROGRESS_END_DATE
             )
           }
+
           sub={
             `Day ${PLAN_TOTAL_DAYS} / ${PLAN_TOTAL_DAYS} วัน`
           }
@@ -687,9 +998,11 @@ export default function Page() {
 
         <Metric
           title="กำหนดถัดไป"
+
           value={
             milestone[1]
           }
+
           sub={
             milestone[2]
           }
@@ -698,15 +1011,21 @@ export default function Page() {
       </section>
 
 
+      {/* =================================================
+          SAMPLE SUMMARY
+      ================================================= */}
+
       <section className="metricGrid">
 
         <Metric
           title="Target Sample"
+
           value={
             `${pct(
               summary.targetPercent
             )}%`
           }
+
           sub={
             `${fmt(
               summary.targetTotal
@@ -719,11 +1038,13 @@ export default function Page() {
 
         <Metric
           title="Actual Sample"
+
           value={
             `${pct(
               summary.actualPercent
             )}%`
           }
+
           sub={
             `${fmt(
               summary.actualTotal
@@ -736,6 +1057,7 @@ export default function Page() {
 
         <Metric
           title="Gap จากแผน"
+
           value={
             `${
               overallGap > 0
@@ -745,6 +1067,7 @@ export default function Page() {
               overallGap
             )}%`
           }
+
           sub={
             summary.difference < 0
               ? `ขาด ${fmt(
@@ -752,6 +1075,7 @@ export default function Page() {
                     summary.difference
                   )
                 )} ตัวอย่าง`
+
               : `ถึง/เกิน ${fmt(
                   Math.max(
                     0,
@@ -759,6 +1083,7 @@ export default function Page() {
                   )
                 )} ตัวอย่าง`
           }
+
           tone={
             summary.behind
               ? 'bad'
@@ -769,16 +1094,19 @@ export default function Page() {
 
         <Metric
           title="สถานะรวม"
+
           value={
             overallBehind
               ? 'Behind'
               : 'On Track'
           }
+
           sub={
             overallBehind
               ? 'มีงานที่ต้องเร่ง'
               : 'งานทั้งหมดตามแผน'
           }
+
           tone={
             overallBehind
               ? 'bad'
@@ -788,6 +1116,10 @@ export default function Page() {
 
       </section>
 
+
+      {/* =================================================
+          MAIN SAMPLE INPUT
+      ================================================= */}
 
       <section className="panel">
 
@@ -799,6 +1131,7 @@ export default function Page() {
               SAMPLE PROGRESS
             </div>
 
+
             <h2>
               ตัวอย่างหลัก
             </h2>
@@ -807,8 +1140,15 @@ export default function Page() {
 
 
           <div className="panelNote">
-            รวม {fmt(PROJECT_TOTAL)}
+
+            รวม{' '}
+
+            {fmt(
+              PROJECT_TOTAL
+            )}
+
             {' '}ตัวอย่าง
+
           </div>
 
         </div>
@@ -817,10 +1157,16 @@ export default function Page() {
         <div className="itemGrid">
 
           {ITEM_KEYS.map(
-            (key, index) => {
+            (
+              key,
+              index
+            ) => {
 
               const item =
-                summary.items[key];
+                summary.items[
+                  key
+                ];
+
 
               const status =
                 getStatus(
@@ -830,6 +1176,7 @@ export default function Page() {
 
 
               return (
+
                 <article
                   className="itemCard"
                   key={key}
@@ -838,12 +1185,14 @@ export default function Page() {
                   <div className="itemTop">
 
                     <div className="itemNumber">
+
                       {String(
                         index + 1
                       ).padStart(
                         2,
                         '0'
                       )}
+
                     </div>
 
 
@@ -852,7 +1201,9 @@ export default function Page() {
                         `statusBadge ${status.tone}`
                       }
                     >
+
                       {status.label}
+
                     </span>
 
                   </div>
@@ -864,10 +1215,13 @@ export default function Page() {
 
 
                   <div className="itemTotal">
+
                     Total{' '}
+
                     {fmt(
                       item.total
                     )}
+
                   </div>
 
 
@@ -882,29 +1236,45 @@ export default function Page() {
 
                       <input
                         type="number"
+
                         min="0"
+
                         max={
                           item.total
                         }
+
                         value={
                           values[key]
                         }
+
+                        disabled={
+                          saving ||
+                          loading
+                        }
+
                         onChange={
                           (event) =>
                             updateValue(
                               key,
+
                               event
                                 .target
                                 .value,
+
                               item.total
                             )
                         }
                       />
 
+
                       <span>
-                        / {fmt(
+
+                        /{' '}
+
+                        {fmt(
                           item.total
                         )}
+
                       </span>
 
                     </div>
@@ -915,16 +1285,22 @@ export default function Page() {
                   <div className="itemProgressLine">
 
                     <strong>
+
                       {pct(
                         item.progressPercent
                       )}%
+
                     </strong>
 
+
                     <span>
+
                       Target{' '}
+
                       {fmt(
                         item.target
                       )}
+
                     </span>
 
                   </div>
@@ -950,10 +1326,13 @@ export default function Page() {
                       `gapText ${status.tone}`
                     }
                   >
+
                     {status.detail}
+
                   </div>
 
                 </article>
+
               );
             }
           )}
@@ -962,6 +1341,10 @@ export default function Page() {
 
       </section>
 
+
+      {/* =================================================
+          ADDITIONAL WORK
+      ================================================= */}
 
       <section className="panel">
 
@@ -973,6 +1356,7 @@ export default function Page() {
               ADDITIONAL WORK / QA-QC
             </div>
 
+
             <h2>
               งานติดตามเพิ่มเติม
             </h2>
@@ -981,8 +1365,15 @@ export default function Page() {
 
 
           <div className="panelNote">
+
             ไม่รวมในยอด Sample
-            1,702 ตัวอย่าง
+            {' '}
+            {fmt(
+              PROJECT_TOTAL
+            )}
+            {' '}
+            ตัวอย่าง
+
           </div>
 
         </div>
@@ -990,16 +1381,32 @@ export default function Page() {
 
         <div className="itemGrid">
 
+          {/* SG */}
+
           <AdditionalCard
             number="A1"
+
             title="ตรวจวัดค่า ถ.พ."
+
             actual={
               values.sg_measured
             }
-            max={SG_TOTAL}
-            target={
-              additional.sg.target
+
+            max={
+              SG_TOTAL
             }
+
+            target={
+              additional
+                .sg
+                .target
+            }
+
+            disabled={
+              saving ||
+              loading
+            }
+
             onChange={
               (value) =>
                 updateValue(
@@ -1011,16 +1418,25 @@ export default function Page() {
           />
 
 
+          {/* DUPLICATE */}
+
           <DuplicateCard
             actual={
               values
                 .duplicate_collected
             }
+
             required={
               additional
                 .duplicate
                 .target
             }
+
+            disabled={
+              saving ||
+              loading
+            }
+
             onChange={
               (value) =>
                 updateValue(
@@ -1032,20 +1448,32 @@ export default function Page() {
           />
 
 
+          {/* HEAVY MINERAL COUNT */}
+
           <AdditionalCard
             number="A3"
+
             title="Heavy Mineral Count"
+
             actual={
               values.heavy_counted
             }
+
             max={
               HEAVY_COUNT_TOTAL
             }
+
             target={
               additional
                 .heavyCount
                 .target
             }
+
+            disabled={
+              saving ||
+              loading
+            }
+
             onChange={
               (value) =>
                 updateValue(
@@ -1061,6 +1489,10 @@ export default function Page() {
       </section>
 
 
+      {/* =================================================
+          DELIVERY PLAN
+      ================================================= */}
+
       <section className="panel schedulePanel">
 
         <div className="panelHeading">
@@ -1071,6 +1503,7 @@ export default function Page() {
               DELIVERY PLAN
             </div>
 
+
             <h2>
               แผนส่งตัวอย่าง
             </h2>
@@ -1079,10 +1512,13 @@ export default function Page() {
 
 
           <div className="panelNote">
+
             Final Delivery{' '}
+
             {thaiDate(
               PROGRESS_END_DATE
             )}
+
           </div>
 
         </div>
@@ -1095,10 +1531,23 @@ export default function Page() {
             <thead>
 
               <tr>
-                <th>รอบส่ง</th>
-                <th>กำหนดส่ง</th>
-                <th>ยอดสะสมรวม</th>
-                <th>Progress</th>
+
+                <th>
+                  รอบส่ง
+                </th>
+
+                <th>
+                  กำหนดส่ง
+                </th>
+
+                <th>
+                  ยอดสะสมรวม
+                </th>
+
+                <th>
+                  Progress
+                </th>
+
               </tr>
 
             </thead>
@@ -1115,38 +1564,54 @@ export default function Page() {
                       PROJECT_TOTAL
                     ) * 100;
 
+
                   return (
+
                     <tr key={row.key}>
 
                       <td>
+
                         <strong>
                           {row.label}
                         </strong>
+
                       </td>
+
 
                       <td>
                         {row.delivery}
                       </td>
 
+
                       <td>
+
                         {fmt(
                           row.cumulative
                         )}
+
                         {' / '}
+
                         {fmt(
                           PROJECT_TOTAL
                         )}
+
                       </td>
 
+
                       <td>
+
                         <span className="progressBadge">
+
                           {pct(
                             progress
                           )}%
+
                         </span>
+
                       </td>
 
                     </tr>
+
                   );
                 }
               )}
@@ -1160,16 +1625,29 @@ export default function Page() {
       </section>
 
 
+      {/* =================================================
+          FOOTER
+      ================================================= */}
+
       <footer className="footerNote">
-        Stream Progress ·
-        BTECH Sample Delivery Control ·
+
+        Stream Progress
+        {' · '}
+        BTECH Sample Delivery Control
+        {' · '}
         Supabase
+
       </footer>
 
     </main>
+
   );
 }
 
+
+// ======================================================
+// ADDITIONAL CARD
+// ======================================================
 
 function AdditionalCard({
   number,
@@ -1177,13 +1655,16 @@ function AdditionalCard({
   actual,
   max,
   target,
+  disabled,
   onChange,
 }) {
+
   const status =
     getStatus(
       actual,
       target
     );
+
 
   const progress =
     max > 0
@@ -1193,7 +1674,9 @@ function AdditionalCard({
         ) * 100
       : 0;
 
+
   return (
+
     <article className="itemCard">
 
       <div className="itemTop">
@@ -1202,22 +1685,33 @@ function AdditionalCard({
           {number}
         </div>
 
+
         <span
           className={
             `statusBadge ${status.tone}`
           }
         >
+
           {status.label}
+
         </span>
 
       </div>
 
 
-      <h3>{title}</h3>
+      <h3>
+        {title}
+      </h3>
 
 
       <div className="itemTotal">
-        Total {fmt(max)}
+
+        Total{' '}
+
+        {fmt(
+          max
+        )}
+
       </div>
 
 
@@ -1227,23 +1721,41 @@ function AdditionalCard({
           Actual สะสม
         </label>
 
+
         <div className="numberInputWrap">
 
           <input
             type="number"
+
             min="0"
+
             max={max}
+
             value={actual}
+
+            disabled={
+              disabled
+            }
+
             onChange={
               (event) =>
                 onChange(
-                  event.target.value
+                  event
+                    .target
+                    .value
                 )
             }
           />
 
+
           <span>
-            / {fmt(max)}
+
+            /{' '}
+
+            {fmt(
+              max
+            )}
+
           </span>
 
         </div>
@@ -1254,11 +1766,22 @@ function AdditionalCard({
       <div className="itemProgressLine">
 
         <strong>
-          {pct(progress)}%
+
+          {pct(
+            progress
+          )}%
+
         </strong>
 
+
         <span>
-          Target {fmt(target)}
+
+          Target{' '}
+
+          {fmt(
+            target
+          )}
+
         </span>
 
       </div>
@@ -1284,26 +1807,37 @@ function AdditionalCard({
           `gapText ${status.tone}`
         }
       >
+
         {status.detail}
+
       </div>
 
     </article>
+
   );
 }
 
 
+// ======================================================
+// DUPLICATE CARD
+// ======================================================
+
 function DuplicateCard({
   actual,
   required,
+  disabled,
   onChange,
 }) {
+
   const status =
     getStatus(
       actual,
       required
     );
 
+
   return (
+
     <article className="itemCard">
 
       <div className="itemTop">
@@ -1312,12 +1846,15 @@ function DuplicateCard({
           A2
         </div>
 
+
         <span
           className={
             `statusBadge ${status.tone}`
           }
         >
+
           {status.label}
+
         </span>
 
       </div>
@@ -1329,8 +1866,10 @@ function DuplicateCard({
 
 
       <div className="itemTotal">
-        ระบบคำนวณ Required
+
+        Required คำนวณอัตโนมัติ
         จาก 4 Items หลัก
+
       </div>
 
 
@@ -1340,25 +1879,41 @@ function DuplicateCard({
           Duplicate Collected
         </label>
 
+
         <div className="numberInputWrap">
 
           <input
             type="number"
+
             min="0"
+
             max="100"
+
             value={actual}
+
+            disabled={
+              disabled
+            }
+
             onChange={
               (event) =>
                 onChange(
-                  event.target.value
+                  event
+                    .target
+                    .value
                 )
             }
           />
 
+
           <span>
-            Required {fmt(
+
+            Required{' '}
+
+            {fmt(
               required
             )}
+
           </span>
 
         </div>
@@ -1369,12 +1924,22 @@ function DuplicateCard({
       <div className="itemProgressLine">
 
         <strong>
-          {fmt(actual)}
+
+          {fmt(
+            actual
+          )}
+
         </strong>
 
+
         <span>
+
           Required{' '}
-          {fmt(required)}
+
+          {fmt(
+            required
+          )}
+
         </span>
 
       </div>
@@ -1385,13 +1950,20 @@ function DuplicateCard({
           `gapText ${status.tone}`
         }
       >
+
         {status.detail}
+
       </div>
 
     </article>
+
   );
 }
 
+
+// ======================================================
+// METRIC
+// ======================================================
 
 function Metric({
   title,
@@ -1399,7 +1971,9 @@ function Metric({
   sub,
   tone = 'neutral',
 }) {
+
   return (
+
     <div
       className={
         `metricCard ${tone}`
@@ -1410,14 +1984,17 @@ function Metric({
         {title}
       </div>
 
+
       <div className="metricValue">
         {value}
       </div>
+
 
       <div className="metricSub">
         {sub}
       </div>
 
     </div>
+
   );
 }

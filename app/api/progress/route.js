@@ -65,15 +65,30 @@ function cleanNumber(
 
 
 // ======================================================
-// GET LATEST SNAPSHOT
+// GET SNAPSHOT FOR SELECTED DATE
 // ======================================================
 
-export async function GET() {
+export async function GET(request) {
   try {
-    const url =
+    const { searchParams } =
+      new URL(request.url);
+
+    const date =
+      searchParams.get('date');
+
+    let url =
       `${getSupabaseUrl()}` +
       `/rest/v1/progress_snapshots` +
-      `?select=*` +
+      `?select=*`;
+
+    if (date) {
+      url +=
+        `&progress_date=eq.${encodeURIComponent(
+          date
+        )}`;
+    }
+
+    url +=
       `&order=progress_date.desc,created_at.desc` +
       `&limit=1`;
 
@@ -81,8 +96,10 @@ export async function GET() {
       await fetch(url, {
         headers:
           getHeaders(),
+
         cache: 'no-store',
       });
+
 
     if (!response.ok) {
       const text =
@@ -91,13 +108,23 @@ export async function GET() {
       throw new Error(text);
     }
 
+
     const rows =
       await response.json();
 
-    return NextResponse.json({
-      snapshot:
-        rows?.[0] ?? null,
-    });
+
+    return NextResponse.json(
+      {
+        snapshot:
+          rows?.[0] ?? null,
+      },
+      {
+        headers: {
+          'Cache-Control':
+            'no-store, no-cache, must-revalidate',
+        },
+      }
+    );
   }
 
   catch (error) {
@@ -118,7 +145,6 @@ export async function GET() {
     );
   }
 }
-
 
 // ======================================================
 // SAVE SNAPSHOT
