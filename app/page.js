@@ -32,12 +32,17 @@ const ITEM_KEYS =
 const INITIAL_VALUES = {
   ...Object.fromEntries(
     ITEM_KEYS.map(
-      (key) => [key, 0]
+      (key) => [
+        key,
+        0,
+      ]
     )
   ),
 
   sg_measured: 0,
+
   duplicate_collected: 0,
+
   heavy_counted: 0,
 };
 
@@ -47,6 +52,7 @@ const INITIAL_VALUES = {
 // ======================================================
 
 function todayBangkok() {
+
   const parts =
     new Intl.DateTimeFormat(
       'en-US',
@@ -54,9 +60,14 @@ function todayBangkok() {
         timeZone:
           'Asia/Bangkok',
 
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
+        year:
+          'numeric',
+
+        month:
+          '2-digit',
+
+        day:
+          '2-digit',
       }
     ).formatToParts(
       new Date()
@@ -66,31 +77,39 @@ function todayBangkok() {
   const year =
     parts.find(
       (p) =>
-        p.type === 'year'
+        p.type ===
+        'year'
     )?.value;
 
 
   const month =
     parts.find(
       (p) =>
-        p.type === 'month'
+        p.type ===
+        'month'
     )?.value;
 
 
   const day =
     parts.find(
       (p) =>
-        p.type === 'day'
+        p.type ===
+        'day'
     )?.value;
 
 
-  return `${year}-${month}-${day}`;
+  return (
+    `${year}-` +
+    `${month}-` +
+    `${day}`
+  );
 }
 
 
 function thaiDate(
   dateString
 ) {
+
   if (!dateString) {
     return '-';
   }
@@ -133,6 +152,7 @@ function thaiDate(
 function thaiDateTime(
   timestamp
 ) {
+
   if (!timestamp) {
     return '-';
   }
@@ -144,15 +164,26 @@ function thaiDateTime(
       timeZone:
         'Asia/Bangkok',
 
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
+      day:
+        'numeric',
 
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
+      month:
+        'short',
 
-      hour12: false,
+      year:
+        'numeric',
+
+      hour:
+        '2-digit',
+
+      minute:
+        '2-digit',
+
+      second:
+        '2-digit',
+
+      hour12:
+        false,
     }
   ).format(
     new Date(timestamp)
@@ -165,15 +196,19 @@ function thaiDateTime(
 // ======================================================
 
 function fmt(value) {
+
   return new Intl.NumberFormat(
     'th-TH'
   ).format(
-    Number(value || 0)
+    Number(
+      value || 0
+    )
   );
 }
 
 
 function pct(value) {
+
   return Number(
     value || 0
   ).toFixed(2);
@@ -188,43 +223,71 @@ function getStatus(
   actual,
   target
 ) {
-  if (target === 0) {
+
+  if (
+    target === 0
+  ) {
+
     return {
-      label: 'Not Due',
-      tone: 'neutral',
+      label:
+        'Not Due',
+
+      tone:
+        'neutral',
+
       detail:
         'ยังไม่ถึงช่วง Target',
     };
   }
 
 
-  if (actual < target) {
+  if (
+    actual < target
+  ) {
+
     return {
-      label: 'Behind',
-      tone: 'bad',
+      label:
+        'Behind',
+
+      tone:
+        'bad',
+
       detail:
         `ขาด ${fmt(
-          target - actual
+          target -
+          actual
         )}`,
     };
   }
 
 
-  if (actual > target) {
+  if (
+    actual > target
+  ) {
+
     return {
-      label: 'On Track',
-      tone: 'good',
+      label:
+        'On Track',
+
+      tone:
+        'good',
+
       detail:
         `เกิน Target ${fmt(
-          actual - target
+          actual -
+          target
         )}`,
     };
   }
 
 
   return {
-    label: 'On Track',
-    tone: 'good',
+    label:
+      'On Track',
+
+    tone:
+      'good',
+
     detail:
       'ถึง Target',
   };
@@ -238,7 +301,9 @@ function getStatus(
 function nextMilestone(
   dateString
 ) {
+
   const milestones = [
+
     [
       '2026-09-05',
       'รอบที่ 1',
@@ -342,6 +407,27 @@ export default function Page() {
     useState(null);
 
 
+  // วันที่ของ record
+  // ที่ถูกนำมาแสดง
+  const [
+    sourceDate,
+    setSourceDate,
+  ] =
+    useState(null);
+
+
+  // true =
+  // มีการบันทึกของวันที่เลือกแล้ว
+  //
+  // false =
+  // กำลัง Carry Forward
+  const [
+    hasExactRecord,
+    setHasExactRecord,
+  ] =
+    useState(false);
+
+
   // ----------------------------------------------------
   // CALCULATIONS
   // ----------------------------------------------------
@@ -395,19 +481,22 @@ export default function Page() {
 
 
   // ====================================================
-  // LOAD PROGRESS BY SELECTED DATE
+  // LOAD PROGRESS
   // ====================================================
 
   useEffect(() => {
 
-    let cancelled = false;
+    let cancelled =
+      false;
 
 
     async function loadProgress() {
 
       try {
 
-        setLoading(true);
+        setLoading(
+          true
+        );
 
 
         setMessage(
@@ -423,9 +512,11 @@ export default function Page() {
               date
             )}&t=${Date.now()}`,
             {
-              method: 'GET',
+              method:
+                'GET',
 
-              cache: 'no-store',
+              cache:
+                'no-store',
             }
           );
 
@@ -434,7 +525,10 @@ export default function Page() {
           await response.json();
 
 
-        if (!response.ok) {
+        if (
+          !response.ok
+        ) {
+
           throw new Error(
             data.error ||
             'Load failed'
@@ -442,16 +536,20 @@ export default function Page() {
         }
 
 
-        if (cancelled) {
+        if (
+          cancelled
+        ) {
           return;
         }
 
 
         // ------------------------------------------------
-        // ไม่มีข้อมูลของวันที่เลือก
+        // ไม่มีข้อมูลเลย
         // ------------------------------------------------
 
-        if (!data.snapshot) {
+        if (
+          !data.snapshot
+        ) {
 
           setValues({
             ...INITIAL_VALUES,
@@ -463,8 +561,18 @@ export default function Page() {
           );
 
 
+          setSourceDate(
+            null
+          );
+
+
+          setHasExactRecord(
+            false
+          );
+
+
           setMessage(
-            `ยังไม่มีข้อมูลวันที่ ${thaiDate(
+            `ยังไม่มีข้อมูลสะสมก่อนวันที่ ${thaiDate(
               date
             )}`
           );
@@ -475,7 +583,7 @@ export default function Page() {
 
 
         // ------------------------------------------------
-        // มีข้อมูล
+        // โหลดค่าจาก snapshot
         // ------------------------------------------------
 
         const nextValues = {
@@ -490,32 +598,41 @@ export default function Page() {
 
           nextValues[key] =
             Number(
-              data.snapshot[
+              data
+                .snapshot[
                 key
               ] ?? 0
             );
         }
 
 
-        nextValues.sg_measured =
+        nextValues
+          .sg_measured =
           Number(
-            data.snapshot
-              .sg_measured ?? 0
+            data
+              .snapshot
+              .sg_measured ??
+            0
           );
 
 
-        nextValues.duplicate_collected =
+        nextValues
+          .duplicate_collected =
           Number(
-            data.snapshot
+            data
+              .snapshot
               .duplicate_collected ??
-              0
+            0
           );
 
 
-        nextValues.heavy_counted =
+        nextValues
+          .heavy_counted =
           Number(
-            data.snapshot
-              .heavy_counted ?? 0
+            data
+              .snapshot
+              .heavy_counted ??
+            0
           );
 
 
@@ -525,18 +642,59 @@ export default function Page() {
 
 
         setLastSavedAt(
-          data.snapshot
+          data
+            .snapshot
             .created_at ??
           null
         );
 
 
-        setMessage(
-          `โหลดข้อมูลวันที่ ${thaiDate(
-            data.snapshot
-              .progress_date
-          )} แล้ว`
+        setSourceDate(
+          data.sourceDate ??
+          data.snapshot
+            .progress_date ??
+          null
         );
+
+
+        setHasExactRecord(
+          Boolean(
+            data.exact
+          )
+        );
+
+
+        // ------------------------------------------------
+        // มี record วันที่เลือกจริง
+        // ------------------------------------------------
+
+        if (
+          data.exact
+        ) {
+
+          setMessage(
+            `โหลดข้อมูลวันที่ ${thaiDate(
+              date
+            )} แล้ว`
+          );
+
+        }
+
+        // ------------------------------------------------
+        // ยังไม่มี record วันนี้
+        // Carry Forward
+        // ------------------------------------------------
+
+        else {
+
+          setMessage(
+            `ยังไม่ได้บันทึกวันที่ ${thaiDate(
+              date
+            )} · ใช้ยอดสะสมล่าสุดจาก ${thaiDate(
+              data.sourceDate
+            )}`
+          );
+        }
 
       }
 
@@ -548,7 +706,9 @@ export default function Page() {
         );
 
 
-        if (!cancelled) {
+        if (
+          !cancelled
+        ) {
 
           setMessage(
             'โหลดข้อมูลไม่สำเร็จ'
@@ -559,8 +719,13 @@ export default function Page() {
 
       finally {
 
-        if (!cancelled) {
-          setLoading(false);
+        if (
+          !cancelled
+        ) {
+
+          setLoading(
+            false
+          );
         }
 
       }
@@ -571,21 +736,25 @@ export default function Page() {
 
 
     return () => {
-      cancelled = true;
+
+      cancelled =
+        true;
     };
 
   }, [date]);
 
 
   // ====================================================
-  // SAVE PROGRESS
+  // SAVE
   // ====================================================
 
   async function save() {
 
     try {
 
-      setSaving(true);
+      setSaving(
+        true
+      );
 
 
       setMessage(
@@ -597,14 +766,16 @@ export default function Page() {
         await fetch(
           '/api/progress',
           {
-            method: 'POST',
+            method:
+              'POST',
 
             headers: {
               'Content-Type':
                 'application/json',
             },
 
-            cache: 'no-store',
+            cache:
+              'no-store',
 
             body:
               JSON.stringify({
@@ -621,7 +792,9 @@ export default function Page() {
         await response.json();
 
 
-      if (!response.ok) {
+      if (
+        !response.ok
+      ) {
 
         throw new Error(
           data.error ||
@@ -639,6 +812,16 @@ export default function Page() {
 
       setLastSavedAt(
         createdAt
+      );
+
+
+      setSourceDate(
+        date
+      );
+
+
+      setHasExactRecord(
+        true
       );
 
 
@@ -669,8 +852,9 @@ export default function Page() {
 
     finally {
 
-      setSaving(false);
-
+      setSaving(
+        false
+      );
     }
   }
 
@@ -730,9 +914,7 @@ export default function Page() {
 
     <main className="pageShell">
 
-      {/* =================================================
-          HEADER
-      ================================================= */}
+      {/* HEADER */}
 
       <header className="appHeader">
 
@@ -770,9 +952,7 @@ export default function Page() {
       </header>
 
 
-      {/* =================================================
-          HERO
-      ================================================= */}
+      {/* HERO */}
 
       <section className="heroCard">
 
@@ -810,9 +990,11 @@ export default function Page() {
           <div className="heroCount">
 
             <strong>
+
               {fmt(
                 summary.actualTotal
               )}
+
             </strong>
 
             {' / '}
@@ -861,9 +1043,7 @@ export default function Page() {
         </div>
 
 
-        {/* -----------------------------------------------
-            CONTROL
-        ----------------------------------------------- */}
+        {/* CONTROL */}
 
         <div className="controlPanel">
 
@@ -891,7 +1071,9 @@ export default function Page() {
             onChange={
               (event) =>
                 setDate(
-                  event.target.value
+                  event
+                    .target
+                    .value
                 )
             }
           />
@@ -913,7 +1095,9 @@ export default function Page() {
                 ? 'กำลังบันทึก...'
                 : loading
                 ? 'กำลังโหลด...'
-                : 'บันทึก Progress'
+                : hasExactRecord
+                ? 'บันทึก Progress'
+                : 'บันทึก Progress วันนี้'
             }
 
           </button>
@@ -930,7 +1114,11 @@ export default function Page() {
 
               <div>
 
-                บันทึกล่าสุด:{' '}
+                {
+                  hasExactRecord
+                    ? 'บันทึกล่าสุด: '
+                    : 'ข้อมูลต้นทางบันทึกล่าสุด: '
+                }
 
                 {thaiDateTime(
                   lastSavedAt
@@ -940,6 +1128,24 @@ export default function Page() {
 
             )}
 
+
+            {
+              !hasExactRecord &&
+              sourceDate && (
+
+                <div>
+
+                  ยอดสะสมที่แสดงมาจาก
+                  {' '}
+                  {thaiDate(
+                    sourceDate
+                  )}
+
+                </div>
+
+              )
+            }
+
           </div>
 
         </div>
@@ -947,9 +1153,7 @@ export default function Page() {
       </section>
 
 
-      {/* =================================================
-          PLAN INFORMATION
-      ================================================= */}
+      {/* PLAN INFORMATION */}
 
       <section className="metricGrid">
 
@@ -1011,9 +1215,7 @@ export default function Page() {
       </section>
 
 
-      {/* =================================================
-          SAMPLE SUMMARY
-      ================================================= */}
+      {/* SAMPLE SUMMARY */}
 
       <section className="metricGrid">
 
@@ -1117,9 +1319,7 @@ export default function Page() {
       </section>
 
 
-      {/* =================================================
-          MAIN SAMPLE INPUT
-      ================================================= */}
+      {/* MAIN SAMPLE INPUT */}
 
       <section className="panel">
 
@@ -1163,7 +1363,8 @@ export default function Page() {
             ) => {
 
               const item =
-                summary.items[
+                summary
+                  .items[
                   key
                 ];
 
@@ -1287,7 +1488,8 @@ export default function Page() {
                     <strong>
 
                       {pct(
-                        item.progressPercent
+                        item
+                          .progressPercent
                       )}%
 
                     </strong>
@@ -1313,7 +1515,8 @@ export default function Page() {
                         width:
                           `${Math.min(
                             100,
-                            item.progressPercent
+                            item
+                              .progressPercent
                           )}%`,
                       }}
                     />
@@ -1342,9 +1545,7 @@ export default function Page() {
       </section>
 
 
-      {/* =================================================
-          ADDITIONAL WORK
-      ================================================= */}
+      {/* ADDITIONAL WORK */}
 
       <section className="panel">
 
@@ -1381,15 +1582,14 @@ export default function Page() {
 
         <div className="itemGrid">
 
-          {/* SG */}
-
           <AdditionalCard
             number="A1"
 
             title="ตรวจวัดค่า ถ.พ."
 
             actual={
-              values.sg_measured
+              values
+                .sg_measured
             }
 
             max={
@@ -1417,8 +1617,6 @@ export default function Page() {
             }
           />
 
-
-          {/* DUPLICATE */}
 
           <DuplicateCard
             actual={
@@ -1448,15 +1646,14 @@ export default function Page() {
           />
 
 
-          {/* HEAVY MINERAL COUNT */}
-
           <AdditionalCard
             number="A3"
 
             title="Heavy Mineral Count"
 
             actual={
-              values.heavy_counted
+              values
+                .heavy_counted
             }
 
             max={
@@ -1489,9 +1686,7 @@ export default function Page() {
       </section>
 
 
-      {/* =================================================
-          DELIVERY PLAN
-      ================================================= */}
+      {/* DELIVERY PLAN */}
 
       <section className="panel schedulePanel">
 
@@ -1624,10 +1819,6 @@ export default function Page() {
 
       </section>
 
-
-      {/* =================================================
-          FOOTER
-      ================================================= */}
 
       <footer className="footerNote">
 

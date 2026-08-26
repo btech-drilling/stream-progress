@@ -15,6 +15,10 @@ export const dynamic =
   'force-dynamic';
 
 
+// ======================================================
+// SUPABASE
+// ======================================================
+
 function getSupabaseUrl() {
   const url =
     process.env.SUPABASE_URL;
@@ -42,8 +46,10 @@ function getHeaders() {
 
   return {
     apikey: secret,
+
     Authorization:
       `Bearer ${secret}`,
+
     'Content-Type':
       'application/json',
   };
@@ -65,58 +71,184 @@ function cleanNumber(
 
 
 // ======================================================
-// GET SNAPSHOT FOR SELECTED DATE
+// FETCH ONE SNAPSHOT
 // ======================================================
 
-export async function GET(request) {
-  try {
-    const { searchParams } =
-      new URL(request.url);
+async function fetchSnapshot(
+  query
+) {
+  const url =
+    `${getSupabaseUrl()}` +
+    `/rest/v1/progress_snapshots` +
+    `?select=*` +
+    `&${query}` +
+    `&order=progress_date.desc,created_at.desc` +
+    `&limit=1`;
 
-    const date =
-      searchParams.get('date');
 
-    let url =
-      `${getSupabaseUrl()}` +
-      `/rest/v1/progress_snapshots` +
-      `?select=*`;
+  const response =
+    await fetch(
+      url,
+      {
+        method: 'GET',
 
-    if (date) {
-      url +=
-        `&progress_date=eq.${encodeURIComponent(
-          date
-        )}`;
-    }
-
-    url +=
-      `&order=progress_date.desc,created_at.desc` +
-      `&limit=1`;
-
-    const response =
-      await fetch(url, {
         headers:
           getHeaders(),
 
         cache: 'no-store',
-      });
+      }
+    );
 
 
-    if (!response.ok) {
-      const text =
-        await response.text();
+  if (!response.ok) {
+    const text =
+      await response.text();
 
-      throw new Error(text);
+    throw new Error(
+      `Supabase error ${response.status}: ${text}`
+    );
+  }
+
+
+  const rows =
+    await response.json();
+
+
+  return rows?.[0] ?? null;
+}
+
+
+// ======================================================
+// GET
+//
+// 1. ถ้ามี record วันที่เลือก -> ใช้ record วันนั้น
+// 2. ถ้ายังไม่มี -> ใช้ยอดสะสมล่าสุดก่อนวันนั้น
+// 3. บอก frontend ด้วยว่าเป็น exact หรือ carried forward
+// ======================================================
+
+export async function GET(
+  request
+) {
+  try {
+    const {
+      searchParams,
+    } =
+      new URL(
+        request.url
+      );
+
+
+    const date =
+      searchParams.get(
+        'date'
+      );
+
+
+    // --------------------------------------------------
+    // ไม่ส่ง date มา
+    // เอา record ล่าสุดทั้งหมด
+    // --------------------------------------------------
+
+    if (!date) {
+
+      const latest =
+        await fetchSnapshot(
+          'progress_date=not.is.null'
+        );
+
+
+      return NextResponse.json(
+        {
+          snapshot:
+            latest,
+
+          exact: true,
+
+          requestedDate:
+            latest
+              ?.progress_date ??
+            null,
+
+          sourceDate:
+            latest
+              ?.progress_date ??
+            null,
+        },
+        {
+          headers: {
+            'Cache-Control':
+              'no-store, no-cache, must-revalidate',
+          },
+        }
+      );
     }
 
 
-    const rows =
-      await response.json();
+    // --------------------------------------------------
+    // 1. หา record ของวันที่เลือกก่อน
+    // --------------------------------------------------
+
+    const exactSnapshot =
+      await fetchSnapshot(
+        `progress_date=eq.${encodeURIComponent(
+          date
+        )}`
+      );
+
+
+    if (exactSnapshot) {
+
+      return NextResponse.json(
+        {
+          snapshot:
+            exactSnapshot,
+
+          exact: true,
+
+          requestedDate:
+            date,
+
+          sourceDate:
+            exactSnapshot
+              .progress_date,
+        },
+        {
+          headers: {
+            'Cache-Control':
+              'no-store, no-cache, must-revalidate',
+          },
+        }
+      );
+    }
+
+
+    // --------------------------------------------------
+    // 2. วันที่เลือกยังไม่มี record
+    // Carry Forward จากวันก่อนหน้า
+    // --------------------------------------------------
+
+    const previousSnapshot =
+      await fetchSnapshot(
+        `progress_date=lt.${encodeURIComponent(
+          date
+        )}`
+      );
 
 
     return NextResponse.json(
       {
         snapshot:
-          rows?.[0] ?? null,
+          previousSnapshot,
+
+        exact: false,
+
+        requestedDate:
+          date,
+
+        sourceDate:
+          previousSnapshot
+            ?.progress_date ??
+          null,
       },
       {
         headers: {
@@ -128,10 +260,12 @@ export async function GET(request) {
   }
 
   catch (error) {
+
     console.error(
       'GET progress error:',
       error
     );
+
 
     return NextResponse.json(
       {
@@ -146,7 +280,9 @@ export async function GET(request) {
   }
 }
 
+
 // ======================================================
+// POST
 // SAVE SNAPSHOT
 // ======================================================
 
@@ -154,10 +290,15 @@ export async function POST(
   request
 ) {
   try {
+
     const body =
       await request.json();
 
-    if (!body.progress_date) {
+
+    if (
+      !body.progress_date
+    ) {
+
       return NextResponse.json(
         {
           error:
@@ -176,11 +317,20 @@ export async function POST(
     };
 
 
-    // Main 5 items
+    // --------------------------------------------------
+    // MAIN SAMPLE ITEMS
+    // --------------------------------------------------
+
     for (
-      const [key, item]
-      of Object.entries(ITEMS)
+      const [
+        key,
+        item,
+      ]
+      of Object.entries(
+        ITEMS
+      )
     ) {
+
       payload[key] =
         cleanNumber(
           body[key],
@@ -189,18 +339,23 @@ export async function POST(
     }
 
 
-    // Additional Work
+    // --------------------------------------------------
+    // ADDITIONAL WORK
+    // --------------------------------------------------
+
     payload.sg_measured =
       cleanNumber(
         body.sg_measured,
         SG_TOTAL
       );
 
+
     payload.duplicate_collected =
       cleanNumber(
         body.duplicate_collected,
         100
       );
+
 
     payload.heavy_counted =
       cleanNumber(
@@ -209,34 +364,47 @@ export async function POST(
       );
 
 
+    // --------------------------------------------------
+    // SAVE
+    // --------------------------------------------------
+
     const url =
       `${getSupabaseUrl()}` +
       `/rest/v1/progress_snapshots`;
 
 
     const response =
-      await fetch(url, {
-        method: 'POST',
+      await fetch(
+        url,
+        {
+          method: 'POST',
 
-        headers: {
-          ...getHeaders(),
+          headers: {
+            ...getHeaders(),
 
-          Prefer:
-            'return=representation',
-        },
+            Prefer:
+              'return=representation',
+          },
 
-        body:
-          JSON.stringify(
-            payload
-          ),
-      });
+          cache: 'no-store',
+
+          body:
+            JSON.stringify(
+              payload
+            ),
+        }
+      );
 
 
     if (!response.ok) {
+
       const text =
         await response.text();
 
-      throw new Error(text);
+
+      throw new Error(
+        `Supabase error ${response.status}: ${text}`
+      );
     }
 
 
@@ -244,19 +412,41 @@ export async function POST(
       await response.json();
 
 
-    return NextResponse.json({
-      ok: true,
-      snapshot:
-        rows?.[0] ??
-        payload,
-    });
+    const snapshot =
+      rows?.[0] ??
+      payload;
+
+
+    return NextResponse.json(
+      {
+        ok: true,
+
+        snapshot,
+
+        exact: true,
+
+        requestedDate:
+          body.progress_date,
+
+        sourceDate:
+          body.progress_date,
+      },
+      {
+        headers: {
+          'Cache-Control':
+            'no-store, no-cache, must-revalidate',
+        },
+      }
+    );
   }
 
   catch (error) {
+
     console.error(
       'POST progress error:',
       error
     );
+
 
     return NextResponse.json(
       {
