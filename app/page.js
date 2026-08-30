@@ -39,11 +39,14 @@ const INITIAL_VALUES = {
     )
   ),
 
-  sg_measured: 0,
+  sg_measured:
+    0,
 
-  duplicate_collected: 0,
+  duplicate_collected:
+    0,
 
-  heavy_counted: 0,
+  heavy_counted:
+    0,
 };
 
 
@@ -77,31 +80,26 @@ function todayBangkok() {
   const year =
     parts.find(
       (p) =>
-        p.type ===
-        'year'
+        p.type === 'year'
     )?.value;
 
 
   const month =
     parts.find(
       (p) =>
-        p.type ===
-        'month'
+        p.type === 'month'
     )?.value;
 
 
   const day =
     parts.find(
       (p) =>
-        p.type ===
-        'day'
+        p.type === 'day'
     )?.value;
 
 
   return (
-    `${year}-` +
-    `${month}-` +
-    `${day}`
+    `${year}-${month}-${day}`
   );
 }
 
@@ -195,20 +193,20 @@ function thaiDateTime(
 // FORMAT
 // ======================================================
 
-function fmt(value) {
-
+function fmt(
+  value
+) {
   return new Intl.NumberFormat(
     'th-TH'
   ).format(
-    Number(
-      value || 0
-    )
+    Number(value || 0)
   );
 }
 
 
-function pct(value) {
-
+function pct(
+  value
+) {
   return Number(
     value || 0
   ).toFixed(2);
@@ -224,9 +222,7 @@ function getStatus(
   target
 ) {
 
-  if (
-    target === 0
-  ) {
+  if (target === 0) {
 
     return {
       label:
@@ -241,9 +237,7 @@ function getStatus(
   }
 
 
-  if (
-    actual < target
-  ) {
+  if (actual < target) {
 
     return {
       label:
@@ -254,16 +248,13 @@ function getStatus(
 
       detail:
         `ขาด ${fmt(
-          target -
-          actual
+          target - actual
         )}`,
     };
   }
 
 
-  if (
-    actual > target
-  ) {
+  if (actual > target) {
 
     return {
       label:
@@ -274,8 +265,7 @@ function getStatus(
 
       detail:
         `เกิน Target ${fmt(
-          actual -
-          target
+          actual - target
         )}`,
     };
   }
@@ -296,7 +286,6 @@ function getStatus(
 
 // ======================================================
 // NEXT MILESTONE
-// Deadline ใหม่ -12 วัน
 // ======================================================
 
 function nextMilestone(
@@ -304,7 +293,6 @@ function nextMilestone(
 ) {
 
   const milestones = [
-
     [
       '2026-08-24',
       'รอบที่ 1',
@@ -339,8 +327,8 @@ function nextMilestone(
 
   return (
     milestones.find(
-      ([d]) =>
-        dateString <= d
+      ([date]) =>
+        dateString <= date
     ) || [
       '-',
       'ครบทุกชุด',
@@ -395,6 +383,20 @@ export default function Page() {
     setLoading,
   ] =
     useState(false);
+
+
+  const [
+    sendingLine,
+    setSendingLine,
+  ] =
+    useState(false);
+
+
+  const [
+    lineMessage,
+    setLineMessage,
+  ] =
+    useState('');
 
 
   const [
@@ -472,7 +474,6 @@ export default function Page() {
 
   // ====================================================
   // LOAD PROGRESS
-  // Carry Forward ถ้าวันนี้ยังไม่มี Record
   // ====================================================
 
   useEffect(() => {
@@ -487,6 +488,11 @@ export default function Page() {
 
         setLoading(
           true
+        );
+
+
+        setLineMessage(
+          ''
         );
 
 
@@ -516,9 +522,7 @@ export default function Page() {
           await response.json();
 
 
-        if (
-          !response.ok
-        ) {
+        if (!response.ok) {
 
           throw new Error(
             data.error ||
@@ -527,17 +531,16 @@ export default function Page() {
         }
 
 
-        if (
-          cancelled
-        ) {
+        if (cancelled) {
           return;
         }
 
 
-        // ไม่มีข้อมูลสะสมเลย
-        if (
-          !data.snapshot
-        ) {
+        // ------------------------------------------------
+        // ไม่มีข้อมูลเลย
+        // ------------------------------------------------
+
+        if (!data.snapshot) {
 
           setValues({
             ...INITIAL_VALUES,
@@ -570,7 +573,10 @@ export default function Page() {
         }
 
 
-        // โหลดค่าจาก Snapshot
+        // ------------------------------------------------
+        // LOAD VALUES
+        // ------------------------------------------------
+
         const nextValues = {
           ...INITIAL_VALUES,
         };
@@ -583,39 +589,32 @@ export default function Page() {
 
           nextValues[key] =
             Number(
-              data
-                .snapshot[
+              data.snapshot[
                 key
               ] ?? 0
             );
         }
 
 
-        nextValues
-          .sg_measured =
+        nextValues.sg_measured =
           Number(
-            data
-              .snapshot
+            data.snapshot
               .sg_measured ??
             0
           );
 
 
-        nextValues
-          .duplicate_collected =
+        nextValues.duplicate_collected =
           Number(
-            data
-              .snapshot
+            data.snapshot
               .duplicate_collected ??
             0
           );
 
 
-        nextValues
-          .heavy_counted =
+        nextValues.heavy_counted =
           Number(
-            data
-              .snapshot
+            data.snapshot
               .heavy_counted ??
             0
           );
@@ -627,8 +626,7 @@ export default function Page() {
 
 
         setLastSavedAt(
-          data
-            .snapshot
+          data.snapshot
             .created_at ??
           null
         );
@@ -649,9 +647,7 @@ export default function Page() {
         );
 
 
-        if (
-          data.exact
-        ) {
+        if (data.exact) {
 
           setMessage(
             `โหลดข้อมูลวันที่ ${thaiDate(
@@ -682,9 +678,7 @@ export default function Page() {
         );
 
 
-        if (
-          !cancelled
-        ) {
+        if (!cancelled) {
 
           setMessage(
             'โหลดข้อมูลไม่สำเร็จ'
@@ -695,9 +689,7 @@ export default function Page() {
 
       finally {
 
-        if (
-          !cancelled
-        ) {
+        if (!cancelled) {
 
           setLoading(
             false
@@ -730,6 +722,11 @@ export default function Page() {
 
       setSaving(
         true
+      );
+
+
+      setLineMessage(
+        ''
       );
 
 
@@ -768,9 +765,7 @@ export default function Page() {
         await response.json();
 
 
-      if (
-        !response.ok
-      ) {
+      if (!response.ok) {
 
         throw new Error(
           data.error ||
@@ -829,6 +824,84 @@ export default function Page() {
     finally {
 
       setSaving(
+        false
+      );
+    }
+  }
+
+
+  // ====================================================
+  // SEND LATEST TO LINE
+  // ====================================================
+
+  async function sendLatestLine() {
+
+    try {
+
+      setSendingLine(
+        true
+      );
+
+
+      setLineMessage(
+        'กำลังส่ง LINE...'
+      );
+
+
+      const response =
+        await fetch(
+          '/api/line-latest',
+          {
+            method:
+              'POST',
+
+            cache:
+              'no-store',
+          }
+        );
+
+
+      const data =
+        await response.json();
+
+
+      if (!response.ok) {
+
+        throw new Error(
+          data.error ||
+          'Send LINE failed'
+        );
+      }
+
+
+      setLineMessage(
+        `ส่ง LINE Progress ล่าสุด (${thaiDate(
+          data.progressDate
+        )}) เรียบร้อย`
+      );
+
+    }
+
+    catch (error) {
+
+      console.error(
+        'Send LINE latest error:',
+        error
+      );
+
+
+      setLineMessage(
+        `ส่ง LINE ไม่สำเร็จ: ${
+          error?.message ||
+          'Unknown error'
+        }`
+      );
+
+    }
+
+    finally {
+
+      setSendingLine(
         false
       );
     }
@@ -1019,7 +1092,7 @@ export default function Page() {
         </div>
 
 
-        {/* CONTROL */}
+        {/* CONTROL PANEL */}
 
         <div className="controlPanel">
 
@@ -1041,15 +1114,14 @@ export default function Page() {
 
             disabled={
               saving ||
-              loading
+              loading ||
+              sendingLine
             }
 
             onChange={
               (event) =>
                 setDate(
-                  event
-                    .target
-                    .value
+                  event.target.value
                 )
             }
           />
@@ -1062,7 +1134,8 @@ export default function Page() {
 
             disabled={
               saving ||
-              loading
+              loading ||
+              sendingLine
             }
           >
 
@@ -1074,6 +1147,29 @@ export default function Page() {
                 : hasExactRecord
                 ? 'บันทึก Progress'
                 : 'บันทึก Progress วันนี้'
+            }
+
+          </button>
+
+
+          <button
+            className="primaryButton"
+
+            onClick={
+              sendLatestLine
+            }
+
+            disabled={
+              saving ||
+              loading ||
+              sendingLine
+            }
+          >
+
+            {
+              sendingLine
+                ? 'กำลังส่ง LINE...'
+                : 'ส่ง LINE Progress ล่าสุด'
             }
 
           </button>
@@ -1122,6 +1218,15 @@ export default function Page() {
               )
             }
 
+
+            {lineMessage && (
+
+              <div>
+                {lineMessage}
+              </div>
+
+            )}
+
           </div>
 
         </div>
@@ -1129,7 +1234,7 @@ export default function Page() {
       </section>
 
 
-      {/* PLAN INFORMATION */}
+      {/* PLAN */}
 
       <section className="metricGrid">
 
@@ -1191,7 +1296,7 @@ export default function Page() {
       </section>
 
 
-      {/* SAMPLE SUMMARY */}
+      {/* SUMMARY */}
 
       <section className="metricGrid">
 
@@ -1295,7 +1400,7 @@ export default function Page() {
       </section>
 
 
-      {/* MAIN SAMPLE INPUT */}
+      {/* MAIN SAMPLE */}
 
       <section className="panel">
 
@@ -1306,7 +1411,6 @@ export default function Page() {
             <div className="sectionEyebrow">
               SAMPLE PROGRESS
             </div>
-
 
             <h2>
               ตัวอย่างหลัก
@@ -1339,8 +1443,7 @@ export default function Page() {
             ) => {
 
               const item =
-                summary
-                  .items[
+                summary.items[
                   key
                 ];
 
@@ -1426,18 +1529,17 @@ export default function Page() {
 
                         disabled={
                           saving ||
-                          loading
+                          loading ||
+                          sendingLine
                         }
 
                         onChange={
                           (event) =>
                             updateValue(
                               key,
-
                               event
                                 .target
                                 .value,
-
                               item.total
                             )
                         }
@@ -1580,7 +1682,8 @@ export default function Page() {
 
             disabled={
               saving ||
-              loading
+              loading ||
+              sendingLine
             }
 
             onChange={
@@ -1608,7 +1711,8 @@ export default function Page() {
 
             disabled={
               saving ||
-              loading
+              loading ||
+              sendingLine
             }
 
             onChange={
@@ -1644,7 +1748,8 @@ export default function Page() {
 
             disabled={
               saving ||
-              loading
+              loading ||
+              sendingLine
             }
 
             onChange={
